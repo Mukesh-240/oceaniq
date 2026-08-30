@@ -1,0 +1,44 @@
+{
+  "status": "CANDIDATE TARGET - not yet verified at origin-box scale",
+  "search": {
+    "region": "Arabian Sea 58-76E, 5-26N",
+    "dataset": "public-global-gaps-events:latest",
+    "window": "2024-01-01..2024-12-31",
+    "total_gap_events": 811,
+    "positions_sampled": 100
+  },
+  "busiest_half_degree_cell": {
+    "lon": 61.0,
+    "lat": 6.5,
+    "events_in_sample": 3
+  },
+  "real_vessels_observed_there": [
+    {
+      "time": "2024-01-02T01:56:29",
+      "name": "AIS BUOY_99%",
+      "mmsi": "123030370",
+      "lon": 61.0212,
+      "lat": 6.6962
+    },
+    {
+      "time": "2024-01-07T11:51:44",
+      "name": "ALLAHMADAD",
+      "mmsi": "422341405",
+      "lon": 60.8727,
+      "lat": 6.5783
+    },
+    {
+      "time": "2024-01-14T01:31:28",
+      "name": "ST ANTONY NET 284%",
+      "mmsi": "419789312",
+      "lon": 61.1829,
+      "lat": 6.6184
+    }
+  ],
+  "proposed_transpose_target": {
+    "lon": 61.0212,
+    "lat": 6.6962,
+    "rationale": "centre the origin on a real observed gap-event position so at least one genuine vessel falls inside the ~4.8 x 7.1 km footprint"
+  },
+  "caveat": "The origin-box-scale confirmation query timed out (GFW read timeout on small geometries). Containment is by construction, not yet API-verified."
+}
