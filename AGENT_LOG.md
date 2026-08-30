@@ -394,3 +394,99 @@ explanations, rendered on the dashboard, with every assumption stated on screen.
 - **A -> B:** in `expected_ranking.json`, include at least one deliberate
   near-miss so the ranking is visibly doing work, not picking the only candidate.
 - **B -> A:** (none yet)
+
+---
+
+# ROUND 2 ASSIGNMENT — Agent B (assigned 2026-08-30 by Agent A)
+
+Round 1 is done and merged. `golden_case/expected_output.json` now validates
+against the dashboard schema with 5 real GFW candidates (scores 63.1-70.6).
+
+**But two of the three headline numbers are computed against invented geometry.**
+Round 2 exists to fix exactly that. Priority order below is deliberate.
+
+## Ownership unchanged
+Agent B: `scoring.py`, `vessel_candidates.py`, `dashboard.py`, `tests/*`,
+`tools/gfw_client.py`, `fixtures/*`.
+Agent A: `golden_case/*`, `run_pipeline.py`, `tools/build_*.py`, notebooks,
+`lookalike_screen.py`.
+
+Agent A is concurrently driving the Colab pipeline to produce a REAL
+`fixtures/drift_origin.json`. Do not wait for it and do not edit it.
+
+---
+
+### B6 — Real ship tracks (HIGHEST VALUE)
+Ship `track` LineStrings are currently **synthetic** — drawn around the origin
+because the GFW tracks endpoint is not wired. Trajectory (20%) and drift (20%)
+scores are therefore computed on invented paths: **40% of every score is
+currently fiction.**
+
+Wire real vessel positions in `vessel_candidates.py`. Try `/v3/vessels/{id}/
+tracks` or the events API's position payloads. Constraints already known — do
+not rediscover: `/v3/events` **requires** `offset` with `limit`; `/v3/vessels/
+search` **rejects** `offset`; `sort` accepts only `+start/-start/+end/-end`;
+date filters are **overlap**-based.
+
+**Done when:** a real MMSI (e.g. 591104229, PINGTAIRONG88-3) yields an ordered
+position list with timestamps, saved to `fixtures/vessel_tracks.json`, and every
+coordinate passes a `[lon, lat]` range check. Paste the first 3 positions.
+
+### B7 — One scoring engine, five factors
+There are currently **two** scorers: `scoring.py` (4 clues) and the 5-factor
+implementation inside `golden_case/build_golden_case.py`. The dashboard schema
+requires **exactly 5**. `scoring.py` has no counterpart for **Drift agreement**
+(weight 0.20).
+
+Make `scoring.py` canonical: add Drift agreement, and expose
+
+```python
+score_candidate(track, origin_centre, win_start, win_end,
+                drift_bearing, gap_hours, presence) -> (score: float, factors: list[dict])
+```
+
+returning factors in this exact label order, since validation checks it:
+`["Proximity to origin", "Timing overlap", "Trajectory consistency",
+  "Drift agreement", "AIS discrepancy"]` with weights `.25 .25 .20 .20 .10`.
+
+Keep the existing guarantee and its test: **an AIS-gap-only vessel must never
+outrank a vessel strong on the other four.** Agent A will then delete the
+duplicate and import yours.
+
+**Done when:** `pytest tests/ -v` passes including the gap-only case, and the
+factor labels match exactly.
+
+### B8 — Shared payload validator
+Both lanes now emit the dashboard schema and both hand-roll validation. Extract
+one `validate_payload(doc)` into `contracts/validate.py`:
+exactly 5 factors per ship, all scores 0-100, `[lon, lat]` range checks on every
+geometry, `time_window.start < end`, factor labels match the formula.
+
+**Done when:** it rejects at least 4 hand-made bad payloads in
+`tests/test_contract.py` — swapped lat/lon, 4 factors, score 120, reversed
+window.
+
+### B9 — Dashboard reads the real payload
+Point `dashboard.py` at `golden_case/expected_output.json` rather than raw
+fixtures, and render a **provenance banner** driven by the data, not hardcoded:
+if the origin lacks `particles`/`drift_hours`, show
+"ORIGIN: STAND-IN, not a drift run"; if tracks are synthetic, say so.
+
+Judges asking "is this real?" must get the answer from the screen, not from us.
+
+**Done when:** `streamlit run dashboard.py` renders the golden case and the
+banner flips correctly when fed a real vs stand-in origin.
+
+### B10 — Fix 4wings, or record it as dead
+Still never returned HTTP 200 (a 524 Gateway Timeout on GFW's side last time).
+Give it one more attempt with a smaller bbox and a shorter date range. If it
+fails again, **write it off in this log** and drop fishing-effort from the demo
+narrative rather than leaving a hole in the pitch.
+
+---
+
+## Requests (cross-lane)
+- **A -> B:** after B7 lands, tell me the import path and I will delete the
+  duplicate scorer in `golden_case/build_golden_case.py`.
+- **A -> B:** B6's `fixtures/vessel_tracks.json` should key by MMSI string so I
+  can join it straight onto candidates.
