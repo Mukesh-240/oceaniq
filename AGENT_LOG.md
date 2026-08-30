@@ -233,3 +233,117 @@ their evidence was just not shown.
 
 **Still open:** 4wings POST never returned HTTP 200 (other agent hit a DNS error).
 **Next:** confirm 4wings with one successful call.
+
+---
+
+# WORK SPLIT — parallel lanes (assigned 2026-08-30)
+
+**Goal:** one end-to-end demo. Detector mask -> seeds -> backward drift ->
+origin bbox + time window -> candidate vessels -> ranked suspects -> dashboard.
+
+## Rule 1: file ownership. Do not edit outside your lane.
+
+| Owner | Files |
+|---|---|
+| **Agent B** (other agent) | `scoring.py`, `vessel_candidates.py`, `dashboard.py`, `tools/gfw_client.py`, `fixtures/*`, `tests/test_scoring.py` |
+| **Agent A** (Claude) | `run_pipeline.py`, `tools/build_nb.py`, `tools/build_opendrift_nb.py`, `lookalike_screen.py`, the two `.ipynb` files |
+| **Shared, append-only** | `AGENT_LOG.md`, `handoff.md`, `contracts/*.json` |
+
+If you need a change in the other lane, write it under "Requests" at the bottom.
+Do not edit it yourself.
+
+## Rule 2: build against fixtures, not against each other
+
+Neither lane waits for the other. **Agent B's first task is fixtures** — golden
+JSON files matching `contracts/georeferencing.json`. Once those exist, B builds
+scoring and dashboard against them while A wires the real pipeline. They meet at
+the contract.
+
+---
+
+## AGENT B — your lane (no Colab, no GPU, pure Python + API)
+
+### B1. Fixtures first (30 min) — UNBLOCKS EVERYTHING
+Create `fixtures/` with realistic golden files:
+- `spill_seeds.json` — Pillar 1 -> 2 payload, ~200 seed points near 18.5N 69.1E
+- `drift_origin.json` — Pillar 2 -> 3 payload: `origin_bbox` + `time_window`
+- `gfw_vessels.json` — a **real** GFW response saved to disk (run the query once,
+  save the JSON). Not hand-written — real shape, real fields.
+- `expected_ranking.json` — what the scorer should output for the above
+
+**Done when:** all four load with `json.load()` and validate against
+`contracts/georeferencing.json`. Commit them. Tell A in the log.
+
+### B2. `vessel_candidates.py` (1–2 h)
+Input: `origin_bbox` + `time_window`. Output: candidate vessel list.
+
+Must handle the API constraints already discovered (see entry 8):
+- `limit` **requires** `offset`, else HTTP 422
+- `sort` accepts only `+start`, `-start`, `+end`, `-end`
+- **date filter is overlap-based** — filter client-side if you want events
+  *starting* in the window
+- **Bound AIS-gap duration.** Gap events spanning 2017 -> 2026 are not real gaps.
+  Reject gaps longer than a configurable `MAX_GAP_HOURS` (start at 72 h).
+  Without this the demo accuses vessels dead for a decade.
+
+**Done when:** given the fixture bbox/window it returns a candidate list with
+`mmsi`, `flag`, `name`, `positions`, `gap_events`, each gap under the bound.
+
+### B3. Scoring engine `scoring.py` (2–3 h) — THE PITCH
+Per `files/OCEANIQ-final-hackathon-POC.md`: **transparent per-clue points, never
+one opaque number.**
+
+Four independent clues, each returning `(points, reason_string)`:
+1. **Proximity** — distance from vessel track to backtracked origin
+2. **Timing** — overlap between vessel presence and estimated spill window
+3. **Heading consistency** — vessel course vs. drift direction
+4. **AIS gap** — a gap *within* the window, duration-bounded (B2)
+
+Hard requirements:
+- Every clue independently displayable with its own justification
+- **An AIS gap alone must never be sufficient** to rank a vessel first — the POC
+  explicitly rejects that. Enforce it in code and unit-test it.
+- Output: ranked list, each with total, per-clue breakdown, per-clue reason
+
+**Done when:** `tests/test_scoring.py` passes, including a case proving a
+gap-only vessel does not outrank a vessel strong on three other clues.
+
+### B4. `dashboard.py` (2–3 h)
+Streamlit + folium, reading **fixtures** (not the live pipeline).
+Map: spill polygon, backtracked origin ellipse, vessel tracks. Side panel: ranked
+suspects, expandable per-clue breakdown.
+
+**Must display the honesty caveats** — they are part of the pitch:
+- "Heuristic look-alike screening — not a trained classifier"
+- "Demo georeferencing: assumed anchor and pixel size"
+- "Investigative leads, not a verdict"
+
+**Done when:** `streamlit run dashboard.py` renders from fixtures alone.
+
+### B5. Close 4wings (30 min)
+Still never returned HTTP 200 — the last attempt died on DNS, not on the API.
+One successful call, response saved to `fixtures/`. If the geometry body keeps
+failing, fall back to `region` by EEZ id and log that.
+
+---
+
+## AGENT A — my lane
+
+- **A1. `run_pipeline.py`** — real end-to-end: predicted mask -> `spill_to_seeds`
+  -> OpenDrift backward -> origin bbox -> hand off to B's `vessel_candidates`
+- **A2. Task 4a** — cell 30 look-alike screening on real predictions
+- **A3. Export a real predicted mask** from Colab as a `.npy` into `fixtures/`
+  so B scores against genuine model output, not synthetic blobs
+
+---
+
+## Definition of done for the demo
+
+One scene runs start to finish and produces a ranked suspect list with per-clue
+explanations, rendered on the dashboard, with every assumption stated on screen.
+
+## Requests (cross-lane asks — do not edit the other lane yourself)
+
+- **A -> B:** in `expected_ranking.json`, include at least one deliberate
+  near-miss so the ranking is visibly doing work, not picking the only candidate.
+- **B -> A:** (none yet)
