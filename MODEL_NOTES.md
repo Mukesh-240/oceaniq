@@ -148,6 +148,122 @@ destabilises training. The bias is corrected at inference instead:
    construction as train. Those figures should not be quoted as expected
    performance on broad SAR scenes.
 
+## Metrics provenance — what is actually evidenced
+
+**Two different runs exist, and the evidence for each is of a different
+quality.** Read this before quoting any number.
+
+| run | evidence | strength |
+|---|---|---|
+| **15-epoch run** — mIoU **0.8560**, oil spill **0.796** | `AGENT_LOG.md`, committed `d3e35ae` 2026-08-30 13:47:03, transcribed cell output incl. `done: ran all 15 epochs, 0h25m53s elapsed` and `(fresh kernel) loaded epoch 14 | mIoU 0.8560` | **contemporaneous transcription, no surviving primary output** |
+| **partial re-run** — best mIoU **0.8104**, oil spill **0.734** at epoch 3, crashed at epoch 4 | the output **still rendered in the live Colab notebook** (screenshots below) | **primary artifact** |
+
+These do not contradict each other — they are separate runs. The later partial
+run overwrote the displayed output of the earlier complete one.
+
+**The risk this creates:** the partial re-run printed `<- best, saved` at
+epochs 1, 2 and 3, meaning it wrote its own checkpoints to the same path. The
+file now in Drive may therefore be the **epoch-3 / 0.8104** checkpoint, not the
+epoch-14 / 0.8560 one. Which it is has not been established.
+
+**Recommended posture for judges:** quote **0.8104 / 0.734** if you want a
+number backed by output you can show on screen. Quoting 0.8560 / 0.796 is
+defensible only as "recorded at the time, primary output since overwritten" —
+and should not be paired with a live demo of the checkpoint until its embedded
+`epoch` / `miou` fields have been read back.
+
+### What was searched
+
+| location | result |
+|---|---|
+| local filesystem, `*.pth` / `*unet_resnet34*` | **no checkpoint**; every hit was an unrelated Python `.pth` path file in anaconda |
+| `oil_spill_unet_colab.ipynb` (local) | 32 cells, **0 with stored outputs** — generated source, never round-tripped from Colab |
+| Google Drive | **checkpoint EXISTS**: `oil_spill_runs/unet_resnet34_best.pth`, modified **Aug 30** |
+| live Colab session, notebook `1y9D8G5FAq_7Ax1gOcL1nMv1VwuN-kZV4` | training cell output **still rendered** — this is the only surviving metrics artifact |
+
+### Raw output, verbatim from the Colab cell
+
+```
+GPU        : Tesla T4
+reading    : /content/oil_spill/images/train  (local disk)
+train/val  : 6455 / 1615 pairs
+limits     : 15 epochs or 3.0h, whichever comes first
+checkpoint : /content/drive/MyDrive/oil_spill_runs/unet_resnet34_best.pth
+
+epoch   1 | train 0.2746 | val 0.2372 | mIoU 0.7471 | 0h01m39s | total 0h01m39s  <- best, saved
+        IoU: background=0.840  oil spill=0.654
+epoch   2 | train 0.2290 | val 0.1822 | mIoU 0.8087 | 0h01m43s | total 0h03m23s  <- best, saved
+        IoU: background=0.886  oil spill=0.731
+epoch   3 | train 0.2144 | val 0.1870 | mIoU 0.8104 | 0h01m41s | total 0h05m04s  <- best, saved
+        IoU: background=0.887  oil spill=0.734
+epoch   4 | train 0.2020 | val 0.2245 | mIoU 0.7634 | 0h01m41s | total 0h06m45s
+        IoU: background=0.849  oil spill=0.678
+[then repeated _MultiProcessingDataLoaderIter.__del__ AssertionError tracebacks]
+```
+
+Screenshots: `golden_case/colab_training_output0.png`, `…output.png`, `…output2.png`.
+
+This rendered run **stops at epoch 4**, with no `best val mIoU = …` summary
+line, and the "Training curves" cell below shows `[ ]` — never executed. Its
+loss trajectory is consistent with the logged 15-epoch run continuing from
+here (train 0.2020 at epoch 4 -> 0.1486 at epoch 14), and its ~1m41s epochs
+match the logged `0h25m53s` for 15 epochs.
+
+### Defensible statement for judges
+
+> On the Deep-SAR (Refined SOS) validation split of 1,615 tiles, a U-Net with
+> a ResNet34 ImageNet encoder reached **mIoU 0.8104** (background 0.887,
+> oil spill 0.734) at epoch 3 on a Colab T4, ~1m41s per epoch.
+
+That is the strongest claim backed by output that can be shown on screen. A
+completed 15-epoch run reaching **0.8560 / 0.796** is recorded in
+`AGENT_LOG.md` at the time it happened, but its primary output no longer
+exists.
+
+### What "val" means here
+
+The 1,615 pairs are the SOS dataset's own **test split** (776 Gulf of Mexico +
+839 Persian Gulf), matching the authors' published counts. The training loader
+never reads them, so there is no direct train-on-val contamination.
+
+**Leakage risk is real but showed no evidence.** All 8,070 tiles derive from
+only 21 original scenes via cropping, rotation and noise, and no source
+documents a scene-level split. Tested with 16x16 thumbnail nearest-neighbour
+similarity (`leakage_test.py`):
+
+| comparison | median cosine | frac > 0.99 |
+|---|---|---|
+| random unrelated train-train pairs | 0.9675 | 8.6% |
+| train tile -> nearest *other train* tile | 0.9927 | 64.8% |
+| **val tile -> nearest train tile** | **0.9931** | **62.3%** |
+
+Val is no closer to train than train is to itself, so the high absolute
+similarity is generic SAR-texture, not duplication. Zero exact image-hash
+collisions across splits. **This test is weak** — it cannot detect a val tile
+that partially overlaps a train tile's footprint, or a rotated crop of the same
+region. Scene-level independence remains undocumented and unproven.
+
+### Sanity check against the published benchmark
+
+CBD-Net, the purpose-built network from the paper that introduced SOS
+(Zhu et al., TGRS 2021), reports **mIoU 83.42%** on this dataset. The observed
+**0.8104** sits just below it — exactly where a stock U-Net/ResNet34 baseline
+should land. The unsupported **0.856** would mean a 26-minute off-the-shelf
+baseline *beat* the paper's specialised architecture, which should not be
+claimed without an artifact. (The refined masks could plausibly lift scores
+above the original paper, so it is not impossible — merely unevidenced.)
+
+### Live re-run: attempted, blocked
+
+The checkpoint exists in Drive, so re-evaluating is possible in principle.
+Reconnecting the Colab runtime stalled at "Connecting" for 85+ seconds with
+`Could not connect to the reCAPTCHA service` — Colab gates runtime allocation
+behind reCAPTCHA, which fails under browser automation. **A human on a normal
+browser can do this**: reconnect the runtime, re-run the config and data cells,
+then the checkpoint-reload cell, which prints
+`loaded epoch {ckpt['epoch']} | mIoU {ckpt['miou']:.4f}` — the checkpoint's own
+embedded metadata, which will settle whether a 15-epoch run ever completed.
+
 ### Blocked
 
 Retraining itself is blocked on classifier reachability; this document is the
