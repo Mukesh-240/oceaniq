@@ -193,10 +193,39 @@ cells.append(md("""
 A popup will ask you to choose a Google account and grant access. Pick the
 account whose Drive holds your dataset, and click **Allow** on every screen.
 """))
-cells.append(code("""
+cells.append(code('''
 from google.colab import drive
-drive.mount('/content/drive')
-"""))
+import os, time
+
+def mount_drive(attempts=4, wait=6):
+    """Mount Drive, retrying on failure.
+
+    drive.mount() fails intermittently with a bare ValueError("mount failed") -
+    it did so 3 separate times while this notebook was being built, and
+    succeeded on a plain re-run every time. Retrying here means a transient
+    failure does not stall a live demo waiting for someone to re-run the cell.
+    """
+    for i in range(1, attempts + 1):
+        if os.path.isdir("/content/drive/MyDrive"):
+            print("Drive already mounted")
+            return
+        try:
+            drive.mount("/content/drive", force_remount=(i > 1))
+            print(f"Drive mounted (attempt {i})")
+            return
+        except Exception as e:
+            print(f"  mount attempt {i}/{attempts} failed: {type(e).__name__}: {e}")
+            if i < attempts:
+                print(f"  retrying in {wait}s...")
+                time.sleep(wait)
+    raise RuntimeError(
+        f"Drive mount failed {attempts} times. Usually transient - run this cell "
+        "again. If it keeps failing: Runtime > Disconnect and delete runtime, "
+        "then start over."
+    )
+
+mount_drive()
+'''))
 
 cells.append(md("## 4. Config\n\nEverything you are likely to change lives in this cell."))
 cells.append(code('''
