@@ -1,0 +1,28 @@
+{
+  "pillar_1_to_2": {
+    "description": "Contract for passing detected spill from the Detector (Pillar 1) to OpenDrift (Pillar 2)",
+    "data": {
+      "seed_points": [
+        {
+          "lat": 18.52,
+          "lon": 69.10,
+          "time": "2024-01-15T12:00:00Z"
+        }
+      ],
+      "crs": "EPSG:4326",
+      "timestamp": "2024-01-15T12:00:00Z",
+      "notes": "List of (lat, lon, time) points representing the oil spill pixels in real world coordinates."
+    }
+  },
+  "pillar_2_to_3": {
+    "description": "Contract for passing the estimated backtracked origin from OpenDrift (Pillar 2) to GFW API (Pillar 3)",
+    "data": {
+      "origin_bbox": [68.9, 18.3, 69.2, 18.6],
+      "time_window": {
+        "start": "2024-01-14T12:00:00Z",
+        "end": "2024-01-15T12:00:00Z"
+      },
+      "notes": "The bounding box (minLon, minLat, maxLon, maxLat) and the 24-48h time window enclosing the simulated origin of the spill to query vessel presence."
+    }
+  }
+}
