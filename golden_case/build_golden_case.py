@@ -567,6 +567,7 @@ def main() -> int:
                                "gap_hours": 0.0,
                                "lon": pos.get("lon"), "lat": pos.get("lat"),
                                "event_time": ev_start,
+                               "flag": v.get("flag"), "vtype": v.get("type"),
                                "outside_window": True})
             print(f"    real vessel: {v.get('name')} flag={v.get('flag')} "
                   f"type={v.get('type')} at {ev_start}")
@@ -619,8 +620,14 @@ def main() -> int:
                         "Not computable: only one observed position is available "
                         "(GFW tracks dataset returns 403 for this token).")
             score = round(sum(WEIGHTS[f["label"]] * f["score"] for f in factors), 1)
-        ships.append({"id": str(mmsi), "name": name, "track": track,
-                      "score": score, "factors": factors})
+        ship = {"id": str(mmsi), "name": name, "track": track,
+                "score": score, "factors": factors}
+        # the dashboard card prints "mmsi - flag"; omit rather than render undefined
+        if c.get("flag"):
+            ship["flag"] = c["flag"]
+        if c.get("vtype"):
+            ship["type"] = c["vtype"]
+        ships.append(ship)
     ships.sort(key=lambda s: -s["score"])
 
     # The banner must describe the run that actually happened. It used to say

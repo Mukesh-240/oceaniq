@@ -802,7 +802,7 @@ function factors(ship, ink){
   return `<span class="block">
       <span class="mt-3 mb-1 block hair"></span>${rows}
       <span class="mt-4 mb-1 block border-t pt-2.5 font-mono text-[10.5px] text-slate" style="border-color:var(--rule-soft)">
-        Total ${ship.score}/100 · ${ship.flag} flag
+        Total ${ship.score}/100 · ${ship.flag || '—'} flag
       </span>
     </span>`;
 }

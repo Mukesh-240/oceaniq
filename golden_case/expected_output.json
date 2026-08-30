@@ -122,7 +122,9 @@
           "score": 0.0,
           "explanation": "No AIS gap detected inside the window."
         }
-      ]
+      ],
+      "flag": "IRN",
+      "type": "fishing"
     }
   ],
   "provenance": {
