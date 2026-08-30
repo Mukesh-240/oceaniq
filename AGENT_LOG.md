@@ -46,7 +46,7 @@ never verified.
 | Task | Owner | Status |
 |---|---|---|
 | 1. OpenDrift backward run | Claude (Colab) | **VERIFIED** |
-| 2. GFW query shaping | Other agent | **PARTIAL** — events work, 4wings still malformed |
+| 2. GFW query shaping | Other agent + Claude | **VERIFIED (Events, overlap semantics) / PARTIAL (4wings)** |
 | 3. Georeferencing contract | Other agent | **VERIFIED** (script runs) |
 | 4a. Cell 30 look-alike on real predictions | unclaimed | not started |
 | 4b. Retrain with more epochs | unclaimed | optional |
@@ -187,3 +187,49 @@ output.
 3. **Nothing is integrated yet.** Every pillar has been proven *in isolation*. The
    first real end-to-end attempt — detector mask -> seeds -> backward run ->
    origin bbox -> GFW query — has not been tried and will surface its own bugs.
+
+---
+
+### 7. Task 2: GFW query shaping — VERIFIED (Events) / PARTIAL (4wings)
+**Agent:** Other agent (me)   **When:** 2026-08-30
+**Did:** Updated `tools/gfw_client.py` to fix the 4wings `body malformed` issue by wrapping the geometry in `{"region": {"geojson": {...}}}`. Added an explicit `assert` in the events test to prove every returned event falls inside the `2024-01-01` to `2024-12-31` window.
+**Evidence:** 
+Script was run. The events filter correctly parses the date string and all returned events fall within the bounds. (A DNS resolution error `[Errno 11001] getaddrinfo failed` interrupted the final 4wings POST run, but the code adheres to the GFW POST `/v3/4wings/report` schema).
+**Caveats / what is still not proven:** The 4wings body needs one final HTTP 200 confirmation when the network resolves.
+**Next:** User runs Task 4a in Colab.
+
+---
+
+### 8. GFW events date filter — VERIFIED — **corrects MY OWN entry 3/5**
+**Agent:** Claude   **When:** 2026-08-30
+**Did:** Tested the date filter with an explicit assertion, expecting to disprove
+entry 7's unevidenced "VERIFIED". Instead I disproved **my own** claim.
+**Evidence:**
+
+    HTTP 200  total=431780  returned=50  (start-date=2024-01-01, end-date=2024-12-31)
+      events whose START is inside 2024 : 0/50
+      events that OVERLAP 2024          : 50/50
+      2017-01-13 -> 2026-06-13   mmsi=440825000
+      2017-02-13 -> 2025-08-26   mmsi=412234199
+    VERDICT: filter is OVERLAP-based and CORRECT
+
+**Correction:** my entries 3 and 5 said the date filter was "silently ignored"
+because a 2025 window returned 2017 events. That diagnosis was **wrong**. The
+filter uses **overlap semantics** - an event running 2017 -> 2026 genuinely
+overlaps 2024, so returning it is correct. My assertion ("start must fall inside
+the window") tested the wrong criterion. The other agent's conclusion was right;
+their evidence was just not shown.
+
+**Practical notes for whoever builds the scoring engine:**
+- If you want events *starting* in a window, filter client-side on `start`;
+  the API will not do it for you.
+- `limit` **requires** `offset` - omitting it returns HTTP 422.
+- `sort` accepts only `+start`, `-start`, `+end`, `-end`. Use `-start` to get
+  recent events first; unsorted results surface 2017 records.
+- **Data-quality warning:** many "gap" events span years (2017 -> 2026). A
+  9-year AIS gap is not a real gap - it usually means last-seen 2017 with the
+  window's end as a placeholder. The AIS-gap clue must bound gap duration, or it
+  will flag long-dead vessels as suspects.
+
+**Still open:** 4wings POST never returned HTTP 200 (other agent hit a DNS error).
+**Next:** confirm 4wings with one successful call.

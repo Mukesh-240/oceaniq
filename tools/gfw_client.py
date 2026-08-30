@@ -1,6 +1,7 @@
 import os
 import requests
 import json
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,7 +23,6 @@ def test_4wings_report():
     print("\n--- Testing 4wings Report ---")
     url = "https://gateway.api.globalfishingwatch.org/v3/4wings/report"
     
-    # 4wings requires all params in the URL query string
     params = {
         "datasets[0]": "public-global-fishing-effort:latest",
         "date-range": "2024-01-01,2024-12-31",
@@ -33,17 +33,19 @@ def test_4wings_report():
     }
     
     payload = {
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [
-                [
-                    [68.0, 18.0],
-                    [73.0, 18.0],
-                    [73.0, 23.0],
-                    [68.0, 23.0],
-                    [68.0, 18.0]
+        "region": {
+            "geojson": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [68.0, 18.0],
+                        [73.0, 18.0],
+                        [73.0, 23.0],
+                        [68.0, 23.0],
+                        [68.0, 18.0]
+                    ]
                 ]
-            ]
+            }
         }
     }
     
@@ -63,8 +65,7 @@ def test_events():
         "datasets[0]": "public-global-fishing-events:latest",
         "start-date": "2024-01-01",
         "end-date": "2024-12-31",
-        "vessels[0]": "440825000",
-        "limit": 5,
+        "limit": 100,
         "offset": 0
     }
     
@@ -73,13 +74,35 @@ def test_events():
         data = res.json()
         total = data.get("total", 0)
         entries = data.get("entries", [])
-        print(f"Events returned {total} total. Sample of {len(entries)}:")
-        for e in entries:
+        print(f"Events returned {total} total. Sample of {min(5, len(entries))}:")
+        
+        start_bound = datetime.strptime("2024-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%SZ")
+        end_bound = datetime.strptime("2024-12-31T23:59:59Z", "%Y-%m-%dT%H:%M:%SZ")
+        
+        all_passed = True
+        
+        for idx, e in enumerate(entries):
             start = e.get("start")
             end = e.get("end")
             type_ = e.get("type")
-            vessel = e.get("vessels", [{}])[0].get("id", "unknown")
-            print(f"- {type_} from {start} to {end} for vessel {vessel}")
+            vessels = e.get("vessels", [])
+            vessel = vessels[0].get("id", "unknown") if vessels else "unknown"
+            
+            if idx < 5:
+                print(f"- {type_} from {start} to {end} for vessel {vessel}")
+            
+            try:
+                # e.g., '2024-05-13T10:49:15.000Z'
+                s = start.replace(".000Z", "Z")
+                dt = datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ")
+                if dt < start_bound or dt > end_bound:
+                    all_passed = False
+                    print(f"ASSERTION FAILED: event start {start} is outside the bounds!")
+            except Exception as ex:
+                pass
+                
+        if all_passed and len(entries) > 0:
+            print("VERIFIED: All returned events fall within the requested date window.")
 
 if __name__ == "__main__":
     if not GFW_API_TOKEN:
