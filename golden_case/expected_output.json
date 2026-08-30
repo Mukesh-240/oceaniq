@@ -84,37 +84,21 @@
         "type": "LineString",
         "coordinates": [
           [
-            69.05,
-            18.48
+            54.5342,
+            4.1715
           ],
           [
-            69.07,
-            18.496
-          ],
-          [
-            69.09,
-            18.512
-          ],
-          [
-            69.11,
-            18.528
-          ],
-          [
-            69.13,
-            18.544
-          ],
-          [
-            69.15,
-            18.56
+            54.5342,
+            4.1715
           ]
         ]
       },
-      "score": 81.8,
+      "score": 28.2,
       "factors": [
         {
           "label": "Proximity to origin",
-          "score": 97.2,
-          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
+          "score": 0.0,
+          "explanation": "Closest approach to the reconstructed origin was 2247.7 km."
         },
         {
           "label": "Timing overlap",
@@ -123,13 +107,13 @@
         },
         {
           "label": "Trajectory consistency",
-          "score": 96.5,
-          "explanation": "Course 50 deg differs from the drift axis 43 deg by 6 deg."
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
         },
         {
           "label": "Drift agreement",
-          "score": 50.0,
-          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
         },
         {
           "label": "AIS discrepancy",
@@ -145,37 +129,21 @@
         "type": "LineString",
         "coordinates": [
           [
-            69.05,
-            18.48
+            73.9836,
+            -33.821
           ],
           [
-            69.07,
-            18.496
-          ],
-          [
-            69.09,
-            18.512
-          ],
-          [
-            69.11,
-            18.528
-          ],
-          [
-            69.13,
-            18.544
-          ],
-          [
-            69.15,
-            18.56
+            73.9836,
+            -33.821
           ]
         ]
       },
-      "score": 80.6,
+      "score": 27.0,
       "factors": [
         {
           "label": "Proximity to origin",
-          "score": 97.2,
-          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
+          "score": 0.0,
+          "explanation": "Closest approach to the reconstructed origin was 5843.0 km."
         },
         {
           "label": "Timing overlap",
@@ -184,13 +152,13 @@
         },
         {
           "label": "Trajectory consistency",
-          "score": 96.5,
-          "explanation": "Course 50 deg differs from the drift axis 43 deg by 6 deg."
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
         },
         {
           "label": "Drift agreement",
-          "score": 50.0,
-          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
         },
         {
           "label": "AIS discrepancy",
@@ -206,37 +174,21 @@
         "type": "LineString",
         "coordinates": [
           [
-            69.05,
-            18.48
+            -132.1391,
+            -11.6432
           ],
           [
-            69.07,
-            18.496
-          ],
-          [
-            69.09,
-            18.512
-          ],
-          [
-            69.11,
-            18.528
-          ],
-          [
-            69.13,
-            18.544
-          ],
-          [
-            69.15,
-            18.56
+            -132.1391,
+            -11.6432
           ]
         ]
       },
-      "score": 77.3,
+      "score": 23.7,
       "factors": [
         {
           "label": "Proximity to origin",
-          "score": 97.2,
-          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
+          "score": 0.0,
+          "explanation": "Closest approach to the reconstructed origin was 17612.4 km."
         },
         {
           "label": "Timing overlap",
@@ -245,13 +197,13 @@
         },
         {
           "label": "Trajectory consistency",
-          "score": 96.5,
-          "explanation": "Course 50 deg differs from the drift axis 43 deg by 6 deg."
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
         },
         {
           "label": "Drift agreement",
-          "score": 50.0,
-          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
         },
         {
           "label": "AIS discrepancy",
@@ -267,37 +219,21 @@
         "type": "LineString",
         "coordinates": [
           [
-            69.05,
-            18.48
+            154.2582,
+            -24.3921
           ],
           [
-            69.07,
-            18.496
-          ],
-          [
-            69.09,
-            18.512
-          ],
-          [
-            69.11,
-            18.528
-          ],
-          [
-            69.13,
-            18.544
-          ],
-          [
-            69.15,
-            18.56
+            154.2582,
+            -24.3921
           ]
         ]
       },
-      "score": 75.7,
+      "score": 22.1,
       "factors": [
         {
           "label": "Proximity to origin",
-          "score": 97.2,
-          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
+          "score": 0.0,
+          "explanation": "Closest approach to the reconstructed origin was 10379.1 km."
         },
         {
           "label": "Timing overlap",
@@ -306,13 +242,13 @@
         },
         {
           "label": "Trajectory consistency",
-          "score": 96.5,
-          "explanation": "Course 50 deg differs from the drift axis 43 deg by 6 deg."
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
         },
         {
           "label": "Drift agreement",
-          "score": 50.0,
-          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
         },
         {
           "label": "AIS discrepancy",
@@ -328,37 +264,21 @@
         "type": "LineString",
         "coordinates": [
           [
-            69.05,
-            18.48
+            -133.4977,
+            -15.7795
           ],
           [
-            69.07,
-            18.496
-          ],
-          [
-            69.09,
-            18.512
-          ],
-          [
-            69.11,
-            18.528
-          ],
-          [
-            69.13,
-            18.544
-          ],
-          [
-            69.15,
-            18.56
+            -133.4977,
+            -15.7795
           ]
         ]
       },
-      "score": 72.2,
+      "score": 18.6,
       "factors": [
         {
           "label": "Proximity to origin",
-          "score": 97.2,
-          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
+          "score": 0.0,
+          "explanation": "Closest approach to the reconstructed origin was 17596.5 km."
         },
         {
           "label": "Timing overlap",
@@ -367,13 +287,13 @@
         },
         {
           "label": "Trajectory consistency",
-          "score": 96.5,
-          "explanation": "Course 50 deg differs from the drift axis 43 deg by 6 deg."
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
         },
         {
           "label": "Drift agreement",
-          "score": 50.0,
-          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
         },
         {
           "label": "AIS discrepancy",
@@ -388,7 +308,8 @@
     "origin": "real OpenDrift backward run",
     "drift_forcing": "OpenDrift bundled NorKyst sample (western Norway, Nov 2015)",
     "georeferencing": "Path B - assumed anchor and pixel size, no geotransform",
-    "vessel_tracks": "RECONSTRUCTED - GFW tracks endpoint not wired yet",
+    "vessel_tracks": "REAL single observation per vessel (gap-event position). Full tracks unavailable: GET /v3/vessels/{id}/tracks returns HTTP 403 for dataset public-global-all-tracks:latest with this token.",
+    "track_quality": "single_observation - heading and drift agreement not computable",
     "vessel_identities": "REAL - live GFW query",
     "transposition": {
       "applied": true,

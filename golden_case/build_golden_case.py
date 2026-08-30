@@ -57,37 +57,18 @@ GFW_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
           "(KHTML, like Gecko) Chrome/131.0 Safari/537.36")
 GFW_BASE = "https://gateway.api.globalfishingwatch.org"
 
-# SCORER: Agent B's scoring.py is canonical. Its second port computes real
-# haversine distance, real bearing deltas and real window overlap - verified to
-# produce identical results to the local reference implementation:
-#     gap-only 29.8 | evidence-rich 82.9 | mid 73.2   (both implementations)
-#
-# One interface mismatch: scoring.py indexes track points as dicts
-# ({"lon":..,"lat":..}) but GeoJSON LineString - and therefore this payload -
-# uses [[lon, lat], ...]. Passing a list crashes it with
-# AttributeError: 'list' object has no attribute 'get'. Normalise here rather
-# than editing Agent B's lane.
+# SCORER: Agent B's scoring.py is canonical. It computes real haversine
+# distance, bearing deltas and window overlap - verified identical to the local
+# reference (gap-only 29.8 | evidence-rich 82.9 | mid 73.2), and it now accepts
+# both [[lon, lat], ...] and [{"lon":..,"lat":..}] since the accessor was fixed
+# at source. No adapter needed.
 sys.path.insert(0, str(ROOT))
 try:
-    from scoring import score_candidate as _score_canonical
-    _SCORER = "scoring.py (Agent B, canonical) via list->dict adapter"
+    from scoring import score_candidate
+    _SCORER = "scoring.py (Agent B, canonical)"
 except Exception as _e:                              # noqa: BLE001
-    _score_canonical = None
+    score_candidate = None
     _SCORER = f"local reference - scoring.py import failed: {_e}"
-
-
-def score_candidate(track, origin, win_start, win_end, drift_bearing,
-                    gap_hours, presence):
-    """Adapter onto the canonical scorer; falls back to the local reference."""
-    if _score_canonical is None:
-        return _score_candidate_local(track, origin, win_start, win_end,
-                                      drift_bearing, gap_hours, presence)
-    pts = [{"lon": p[0], "lat": p[1]} if isinstance(p, (list, tuple)) else p
-           for p in track]
-    return _score_canonical(pts, origin, win_start, win_end, drift_bearing,
-                            gap_hours, presence)
-
-
 
 
 # --------------------------------------------------------------------------
@@ -363,6 +344,10 @@ def _score_candidate_local(track, origin, win_start, win_end, drift_bearing,
                              for l, s, e in f]
 
 
+if score_candidate is None:
+    score_candidate = _score_candidate_local
+
+
 
 # --------------------------------------------------------------------------
 # 5. validation
@@ -493,9 +478,15 @@ def main() -> int:
     candidates = []
     for e in gaps[:5]:
         v = e.get("vessel") or {}
+        pos = e.get("position") or {}
         candidates.append({"mmsi": v.get("ssvid") or "unknown",
                            "name": v.get("name") or "UNNAMED",
-                           "gap_hours": e.get("_gap_hours", 0.0)})
+                           "gap_hours": e.get("_gap_hours", 0.0),
+                           # REAL observed position from the gap event itself.
+                           # GFW's tracks dataset (public-global-all-tracks) is
+                           # 403 for this token, so this single point is the only
+                           # genuine position we can obtain per vessel.
+                           "lon": pos.get("lon"), "lat": pos.get("lat")})
     if not candidates:
         for i, v in enumerate(vessels[:5]):
             si = (v.get("selfReportedInfo") or [{}])[0]
@@ -509,16 +500,33 @@ def main() -> int:
     ships = []
     for i, c in enumerate(candidates):
         name, mmsi = c["name"], c["mmsi"]
-        # Track is reconstructed around the origin: GFW vessel *positions* need
-        # the tracks endpoint, which is not wired yet. Flagged, not hidden.
-        track_pts = [[round(ocx - 0.05 + 0.10 * (k / 5.0), 5),
-                      round(ocy - 0.04 + 0.08 * (k / 5.0), 5)] for k in range(6)]
+        # Real single observation where available. GeoJSON LineString needs two
+        # positions, so a lone observation is emitted twice - degenerate on
+        # purpose, and declared as single_observation in provenance. No invented
+        # path: if the real position is missing the candidate is skipped.
+        if c.get("lon") is None or c.get("lat") is None:
+            print(f"    skipping {c['name']}: no observed position in the event")
+            continue
+        track_pts = [[round(c["lon"], 5), round(c["lat"], 5)],
+                     [round(c["lon"], 5), round(c["lat"], 5)]]
+        single_obs = True
         track = {"type": "LineString", "coordinates": track_pts}
         assert_lonlat(track, f"ship[{i}].track")
         gap_h = c["gap_hours"]
         presence = (win_start, win_start + timedelta(hours=6 + 2 * i))
         score, factors = score_candidate(track_pts, (ocx, ocy), win_start, win_end,
                                          drift_bearing, gap_h, presence)
+        if single_obs:
+            # One position cannot yield a heading or a closing distance. Rather
+            # than let the scorer emit a number derived from a duplicated point,
+            # zero those factors and say why. This lowers the ceiling honestly.
+            for fct in factors:
+                if fct["label"] in ("Trajectory consistency", "Drift agreement"):
+                    fct["score"] = 0.0
+                    fct["explanation"] = (
+                        "Not computable: only one observed position is available "
+                        "(GFW tracks dataset returns 403 for this token).")
+            score = round(sum(WEIGHTS[f["label"]] * f["score"] for f in factors), 1)
         ships.append({"id": str(mmsi), "name": name, "track": track,
                       "score": score, "factors": factors})
     ships.sort(key=lambda s: -s["score"])
@@ -534,7 +542,11 @@ def main() -> int:
             "origin": provenance,
             "drift_forcing": "OpenDrift bundled NorKyst sample (western Norway, Nov 2015)",
             "georeferencing": "Path B - assumed anchor and pixel size, no geotransform",
-            "vessel_tracks": "RECONSTRUCTED - GFW tracks endpoint not wired yet",
+            "vessel_tracks": ("REAL single observation per vessel (gap-event position). "
+                              "Full tracks unavailable: GET /v3/vessels/{id}/tracks "
+                              "returns HTTP 403 for dataset "
+                              "public-global-all-tracks:latest with this token."),
+            "track_quality": "single_observation - heading and drift agreement not computable",
             "vessel_identities": "REAL - live GFW query",
             "transposition": transposed or {"applied": False},
         },

@@ -24,6 +24,20 @@ def _bearing(lon1, lat1, lon2, lat2):
     x = math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl)
     return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
 
+def _lonlat(point):
+    """Accept a GeoJSON pair [lon, lat] or a dict {"lon":..,"lat":..}.
+
+    The type check MUST come first. The previous form,
+        point.get("lon", point[0] if isinstance(point, list) else 0)
+    calls .get() on the point before the isinstance check ever runs, so a list -
+    the format GeoJSON LineString and the dashboard payload actually use -
+    raised AttributeError: 'list' object has no attribute 'get'.
+    """
+    if isinstance(point, (list, tuple)):
+        return float(point[0]), float(point[1])
+    return float(point.get("lon", 0.0)), float(point.get("lat", 0.0))
+
+
 def score_candidate(track, origin, win_start, win_end, drift_bearing,
                     gap_hours, presence):
     """
@@ -35,9 +49,7 @@ def score_candidate(track, origin, win_start, win_end, drift_bearing,
 
     # 1. Proximity to origin (25%)
     if track and len(track) > 0:
-        dmin = min(_km(point.get("lon", point[0] if isinstance(point, list) else 0), 
-                       point.get("lat", point[1] if isinstance(point, list) else 0), 
-                       ocx, ocy) for point in track)
+        dmin = min(_km(*_lonlat(point), ocx, ocy) for point in track)
         prox_score = max(0.0, 100.0 * (1 - dmin / 50.0))
         prox_reason = f"Closest approach to the reconstructed origin was {dmin:.1f} km."
     else:
@@ -60,10 +72,8 @@ def score_candidate(track, origin, win_start, win_end, drift_bearing,
     traj_score = 0.0
     traj_reason = "Too few positions to establish a course."
     if track and len(track) >= 2:
-        t0_lon = track[0].get("lon", track[0][0] if isinstance(track[0], list) else 0)
-        t0_lat = track[0].get("lat", track[0][1] if isinstance(track[0], list) else 0)
-        tn_lon = track[-1].get("lon", track[-1][0] if isinstance(track[-1], list) else 0)
-        tn_lat = track[-1].get("lat", track[-1][1] if isinstance(track[-1], list) else 0)
+        t0_lon, t0_lat = _lonlat(track[0])
+        tn_lon, tn_lat = _lonlat(track[-1])
         
         course = _bearing(t0_lon, t0_lat, tn_lon, tn_lat)
         if drift_bearing is not None:
@@ -78,10 +88,8 @@ def score_candidate(track, origin, win_start, win_end, drift_bearing,
     drift_score = 0.0
     drift_reason = "Too few positions to establish drift agreement."
     if track and len(track) >= 2:
-        t0_lon = track[0].get("lon", track[0][0] if isinstance(track[0], list) else 0)
-        t0_lat = track[0].get("lat", track[0][1] if isinstance(track[0], list) else 0)
-        tn_lon = track[-1].get("lon", track[-1][0] if isinstance(track[-1], list) else 0)
-        tn_lat = track[-1].get("lat", track[-1][1] if isinstance(track[-1], list) else 0)
+        t0_lon, t0_lat = _lonlat(track[0])
+        tn_lon, tn_lat = _lonlat(track[-1])
         closing = _km(t0_lon, t0_lat, ocx, ocy) - _km(tn_lon, tn_lat, ocx, ocy)
         drift_score = max(0.0, min(100.0, 50.0 + closing * 5.0))
         drift_reason = (f"Track closed {closing:.1f} km toward the origin, consistent with "
