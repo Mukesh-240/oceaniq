@@ -1,7 +1,15 @@
 {
-  "origin_bbox": [68.0, 18.0, 73.0, 23.0],
+  "origin_bbox": [
+    4.70677,
+    59.74447,
+    4.74974,
+    59.80856
+  ],
   "time_window": {
-    "start": "2024-01-14T12:00:00Z",
-    "end": "2024-01-15T12:00:00Z"
-  }
+    "start": "2015-11-18T06:00:00+00:00",
+    "end": "2015-11-18T18:00:00+00:00"
+  },
+  "particles": 300,
+  "drift_hours": 12,
+  "notes": "PLACEHOLDER geography (NorKyst sample forcing). Single deterministic run - NOT an uncertainty estimate. bbox padded 0.02 deg as a crude stand-in for ensemble spread. Produced by pipeline_end_to_end.ipynb from a real U-Net prediction (15776 px after look-alike screening), 300 seeds, 300/300 particles surviving."
 }
