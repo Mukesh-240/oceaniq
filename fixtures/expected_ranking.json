@@ -1,0 +1,38 @@
+[
+  {
+    "mmsi": "440825000",
+    "name": "DONGWON NO.16",
+    "flag": "KOR",
+    "total_score": 90,
+    "breakdown": {
+      "proximity": {"score": 30, "reason": "Passed within 2km of origin"},
+      "timing": {"score": 30, "reason": "Present in area during exact time window"},
+      "heading": {"score": 20, "reason": "Heading consistent with drift direction"},
+      "ais_gap": {"score": 10, "reason": "12-hour AIS gap found inside the window"}
+    }
+  },
+  {
+    "mmsi": "574951179",
+    "name": "XIN LOC BIEN BD95017",
+    "flag": "VNM",
+    "total_score": 50,
+    "breakdown": {
+      "proximity": {"score": 20, "reason": "Passed within 15km of origin"},
+      "timing": {"score": 30, "reason": "Present in area during exact time window"},
+      "heading": {"score": 0, "reason": "Heading inconsistent with drift direction"},
+      "ais_gap": {"score": 0, "reason": "No AIS gap within window"}
+    }
+  },
+  {
+    "mmsi": "999999999",
+    "name": "SUSPICIOUS GAP ONLY",
+    "flag": "UNK",
+    "total_score": 25,
+    "breakdown": {
+      "proximity": {"score": 0, "reason": "Never closer than 100km to origin"},
+      "timing": {"score": 5, "reason": "Present but at edges of time window"},
+      "heading": {"score": 0, "reason": "Heading opposite to drift direction"},
+      "ais_gap": {"score": 20, "reason": "48-hour AIS gap found inside the window"}
+    }
+  }
+]

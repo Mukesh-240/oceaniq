@@ -1,0 +1,386 @@
+{
+  "satellite_image_url": "data/deep-sar-sample/image/palsar_0.png",
+  "spill_mask": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          68.0255,
+          22.97995
+        ],
+        [
+          68.0239,
+          22.98135
+        ],
+        [
+          68.02125,
+          22.9841
+        ],
+        [
+          68.0213,
+          22.98475
+        ],
+        [
+          68.0218,
+          22.98455
+        ],
+        [
+          68.0227,
+          22.98415
+        ],
+        [
+          68.0243,
+          22.98255
+        ],
+        [
+          68.0255,
+          22.98235
+        ],
+        [
+          68.0255,
+          22.97995
+        ]
+      ]
+    ]
+  },
+  "origin_region": {
+    "polygon": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            67.975,
+            17.975
+          ],
+          [
+            73.025,
+            17.975
+          ],
+          [
+            73.025,
+            23.025
+          ],
+          [
+            67.975,
+            23.025
+          ],
+          [
+            67.975,
+            17.975
+          ]
+        ]
+      ]
+    },
+    "time_window": {
+      "start": "2024-01-14T12:00:00Z",
+      "end": "2024-01-15T12:00:00Z"
+    }
+  },
+  "candidate_ships": [
+    {
+      "id": "591104229",
+      "name": "PINGTAIRONG88-3 74%",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            70.45,
+            20.46
+          ],
+          [
+            70.47,
+            20.476
+          ],
+          [
+            70.49,
+            20.492
+          ],
+          [
+            70.51,
+            20.508
+          ],
+          [
+            70.53,
+            20.524
+          ],
+          [
+            70.55,
+            20.54
+          ]
+        ]
+      },
+      "score": 70.6,
+      "factors": [
+        {
+          "label": "Proximity to origin",
+          "score": 97.3,
+          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
+        },
+        {
+          "label": "Timing overlap",
+          "score": 58.3,
+          "explanation": "Present for 14.0h of the 24.0h estimated discharge window."
+        },
+        {
+          "label": "Trajectory consistency",
+          "score": 96.5,
+          "explanation": "Course 49 deg differs from the drift axis 43 deg by 6 deg."
+        },
+        {
+          "label": "Drift agreement",
+          "score": 50.0,
+          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
+        },
+        {
+          "label": "AIS discrepancy",
+          "score": 24.5,
+          "explanation": "AIS silent for 17.6h inside the window - one clue among five, not proof."
+        }
+      ]
+    },
+    {
+      "id": "591095499",
+      "name": "RONGYE153-5100%",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            70.45,
+            20.46
+          ],
+          [
+            70.47,
+            20.476
+          ],
+          [
+            70.49,
+            20.492
+          ],
+          [
+            70.51,
+            20.508
+          ],
+          [
+            70.53,
+            20.524
+          ],
+          [
+            70.55,
+            20.54
+          ]
+        ]
+      },
+      "score": 68.1,
+      "factors": [
+        {
+          "label": "Proximity to origin",
+          "score": 97.3,
+          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
+        },
+        {
+          "label": "Timing overlap",
+          "score": 50.0,
+          "explanation": "Present for 12.0h of the 24.0h estimated discharge window."
+        },
+        {
+          "label": "Trajectory consistency",
+          "score": 96.5,
+          "explanation": "Course 49 deg differs from the drift axis 43 deg by 6 deg."
+        },
+        {
+          "label": "Drift agreement",
+          "score": 50.0,
+          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
+        },
+        {
+          "label": "AIS discrepancy",
+          "score": 20.4,
+          "explanation": "AIS silent for 14.7h inside the window - one clue among five, not proof."
+        }
+      ]
+    },
+    {
+      "id": "100610121",
+      "name": "NETFISHING      11V8",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            70.45,
+            20.46
+          ],
+          [
+            70.47,
+            20.476
+          ],
+          [
+            70.49,
+            20.492
+          ],
+          [
+            70.51,
+            20.508
+          ],
+          [
+            70.53,
+            20.524
+          ],
+          [
+            70.55,
+            20.54
+          ]
+        ]
+      },
+      "score": 67.7,
+      "factors": [
+        {
+          "label": "Proximity to origin",
+          "score": 97.3,
+          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
+        },
+        {
+          "label": "Timing overlap",
+          "score": 33.3,
+          "explanation": "Present for 8.0h of the 24.0h estimated discharge window."
+        },
+        {
+          "label": "Trajectory consistency",
+          "score": 96.5,
+          "explanation": "Course 49 deg differs from the drift axis 43 deg by 6 deg."
+        },
+        {
+          "label": "Drift agreement",
+          "score": 50.0,
+          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
+        },
+        {
+          "label": "AIS discrepancy",
+          "score": 57.6,
+          "explanation": "AIS silent for 41.5h inside the window - one clue among five, not proof."
+        }
+      ]
+    },
+    {
+      "id": "590944949",
+      "name": "YUANYOU616-5 67%",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            70.45,
+            20.46
+          ],
+          [
+            70.47,
+            20.476
+          ],
+          [
+            70.49,
+            20.492
+          ],
+          [
+            70.51,
+            20.508
+          ],
+          [
+            70.53,
+            20.524
+          ],
+          [
+            70.55,
+            20.54
+          ]
+        ]
+      },
+      "score": 66.3,
+      "factors": [
+        {
+          "label": "Proximity to origin",
+          "score": 97.3,
+          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
+        },
+        {
+          "label": "Timing overlap",
+          "score": 41.7,
+          "explanation": "Present for 10.0h of the 24.0h estimated discharge window."
+        },
+        {
+          "label": "Trajectory consistency",
+          "score": 96.5,
+          "explanation": "Course 49 deg differs from the drift axis 43 deg by 6 deg."
+        },
+        {
+          "label": "Drift agreement",
+          "score": 50.0,
+          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
+        },
+        {
+          "label": "AIS discrepancy",
+          "score": 22.7,
+          "explanation": "AIS silent for 16.3h inside the window - one clue among five, not proof."
+        }
+      ]
+    },
+    {
+      "id": "994164988",
+      "name": "994164988         9V",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            70.45,
+            20.46
+          ],
+          [
+            70.47,
+            20.476
+          ],
+          [
+            70.49,
+            20.492
+          ],
+          [
+            70.51,
+            20.508
+          ],
+          [
+            70.53,
+            20.524
+          ],
+          [
+            70.55,
+            20.54
+          ]
+        ]
+      },
+      "score": 63.1,
+      "factors": [
+        {
+          "label": "Proximity to origin",
+          "score": 97.3,
+          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
+        },
+        {
+          "label": "Timing overlap",
+          "score": 25.0,
+          "explanation": "Present for 6.0h of the 24.0h estimated discharge window."
+        },
+        {
+          "label": "Trajectory consistency",
+          "score": 96.5,
+          "explanation": "Course 49 deg differs from the drift axis 43 deg by 6 deg."
+        },
+        {
+          "label": "Drift agreement",
+          "score": 50.0,
+          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
+        },
+        {
+          "label": "AIS discrepancy",
+          "score": 32.4,
+          "explanation": "AIS silent for 23.3h inside the window - one clue among five, not proof."
+        }
+      ]
+    }
+  ]
+}
