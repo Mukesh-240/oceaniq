@@ -1,0 +1,15 @@
+# Datasets and archives - regenerate via Kaggle (~39s in Colab), never commit
+oil_spill.zip
+oil_spill_small.zip
+files.zip
+oil_spill/
+data/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Credentials - never commit
+kaggle.json
+*.pth

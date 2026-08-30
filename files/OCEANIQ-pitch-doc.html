@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OCEANIQ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  :root{
+    --navy-deep:#0A1F33;
+    --navy-mid:#123354;
+    --teal:#1FB8A6;
+    --teal-light:#DFF6F2;
+    --amber:#E8983A;
+    --amber-light:#FBEBD6;
+    --paper:#F6F4EE;
+    --ink:#16202B;
+    --muted:#5C6B78;
+    --line:#D8D3C6;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:11.3pt;
+    line-height:1.55;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  /* ---------- COVER BAND ---------- */
+  .cover{
+    background:var(--navy-deep);
+    color:#EAF2F1;
+    padding:54px 56px 46px 56px;
+    position:relative;
+    overflow:hidden;
+  }
+  .cover .rings{
+    position:absolute;
+    right:-90px; top:-110px;
+    width:340px; height:340px;
+    border-radius:50%;
+    border:1.5px solid rgba(31,184,166,0.35);
+  }
+  .cover .rings::before, .cover .rings::after{
+    content:"";
+    position:absolute;
+    border-radius:50%;
+    border:1.5px solid rgba(31,184,166,0.22);
+  }
+  .cover .rings::before{ inset:45px; }
+  .cover .rings::after{ inset:100px; border-color:rgba(31,184,166,0.4);}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9.5pt;
+    letter-spacing:2.5px;
+    color:var(--teal);
+    text-transform:uppercase;
+    margin-bottom:14px;
+  }
+  .cover h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:52pt;
+    font-weight:700;
+    margin:0 0 6px 0;
+    letter-spacing:0.5px;
+  }
+  .cover .sub{
+    font-size:14.5pt;
+    color:#C9DAD8;
+    max-width:520px;
+    margin-bottom:22px;
+  }
+  .cover .tagline{
+    border-top:1px solid rgba(255,255,255,0.18);
+    padding-top:16px;
+    font-size:10.3pt;
+    color:#9FB4B1;
+    max-width:560px;
+  }
+
+  /* ---------- BODY ---------- */
+  .page{ padding:40px 56px 10px 56px; }
+  .section{ margin-bottom:34px; }
+  .case-no{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9pt;
+    color:var(--teal);
+    letter-spacing:2px;
+    display:block;
+    margin-bottom:6px;
+  }
+  h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:19pt;
+    font-weight:600;
+    margin:0 0 12px 0;
+    color:var(--navy-deep);
+  }
+  p{ margin:0 0 10px 0; }
+
+  .lede-box{
+    background:var(--navy-deep);
+    color:#EAF2F1;
+    border-radius:6px;
+    padding:22px 26px;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:14.5pt;
+    font-weight:600;
+    line-height:1.5;
+  }
+  .lede-box .tiny{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:8.5pt;
+    color:var(--teal);
+    letter-spacing:2px;
+    display:block;
+    margin-bottom:10px;
+    font-weight:500;
+  }
+
+  /* step flow */
+  .steps{ position:relative; padding-left:6px;}
+  .step{
+    display:flex;
+    gap:18px;
+    padding:14px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .step:last-child{ border-bottom:none; }
+  .step-num{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:20pt;
+    color:var(--teal);
+    width:38px;
+    flex-shrink:0;
+  }
+  .step-body h3{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:11.8pt;
+    font-weight:600;
+    margin:0 0 4px 0;
+    color:var(--navy-deep);
+  }
+  .step-body p{ margin:0; color:var(--ink); font-size:10.6pt;}
+
+  /* transparency box */
+  .honest-box{
+    background:#fff;
+    border:1px solid var(--line);
+    border-left:4px solid var(--muted);
+    border-radius:4px;
+    padding:16px 20px;
+  }
+  .honest-box ul{ margin:6px 0 0 18px; padding:0; }
+  .honest-box li{ margin-bottom:5px; font-size:10.6pt; }
+
+  /* comparison */
+  .compare{ width:100%; border-collapse:collapse; }
+  .compare th{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:8.7pt;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    text-align:left;
+    padding:8px 14px;
+  }
+  .compare th.them{ color:var(--muted); }
+  .compare th.us{ color:var(--navy-deep); }
+  .compare td{
+    padding:11px 14px;
+    font-size:10.4pt;
+    vertical-align:top;
+    border-top:1px solid var(--line);
+  }
+  .compare td.them{ color:var(--muted); background:#EFEDE5; }
+  .compare td.us{ color:var(--ink); background:var(--teal-light); font-weight:500; }
+  .compare tr td:first-child{ border-top-left-radius:0; }
+
+  /* build vs skip */
+  .two-col{ display:flex; gap:20px; }
+  .col{ flex:1; background:#fff; border:1px solid var(--line); border-radius:6px; padding:16px 18px;}
+  .col h4{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:9pt;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    margin:0 0 10px 0;
+  }
+  .col.build h4{ color:var(--teal); }
+  .col.skip h4{ color:var(--muted); }
+  .col ul{ margin:0; padding-left:18px; }
+  .col li{ font-size:10.4pt; margin-bottom:7px; }
+
+  /* demo timeline */
+  .timeline{ position:relative; padding-left:26px; }
+  .timeline::before{
+    content:"";
+    position:absolute; left:6px; top:4px; bottom:4px;
+    width:2px; background:var(--line);
+  }
+  .tl-item{ position:relative; margin-bottom:14px; }
+  .tl-item::before{
+    content:"";
+    position:absolute; left:-26px; top:3px;
+    width:11px; height:11px; border-radius:50%;
+    background:var(--teal); border:2px solid var(--paper);
+  }
+  .tl-item .t{ font-family:'IBM Plex Mono', monospace; font-size:9pt; color:var(--teal); margin-right:8px;}
+  .tl-item .d{ font-size:10.6pt; }
+
+  /* limitation callout */
+  .limit-box{
+    background:var(--amber-light);
+    border-left:4px solid var(--amber);
+    border-radius:4px;
+    padding:18px 22px;
+    font-size:10.8pt;
+  }
+  .limit-box .label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:8.7pt;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:#B4711E;
+    display:block;
+    margin-bottom:8px;
+  }
+
+  .footer{
+    text-align:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:8.3pt;
+    color:var(--muted);
+    letter-spacing:1px;
+    padding:20px 0 34px 0;
+  }
+
+  @page{ size:A4; margin:0; }
+  .page-break{ page-break-before:always; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="rings"></div>
+  <div class="eyebrow">SIH26143 &nbsp;·&nbsp; NTRO CHALLENGE &nbsp;·&nbsp; SATELLITE INTELLIGENCE</div>
+  <h1>OCEANIQ</h1>
+  <div class="sub">Catching illegal oil spills at sea — and tracing them back to the ship responsible.</div>
+  <div class="tagline">A plain-language walkthrough of the problem, our approach, and why it holds up against what already exists — written for anyone, technical or not.</div>
+</div>
+
+<div class="page">
+
+  <div class="section">
+    <span class="case-no">01 — THE PROBLEM</span>
+    <h2>Ships dump oil. Nobody can prove who.</h2>
+    <p>Ships sometimes illegally discharge oil waste into the ocean instead of disposing of it properly, polluting the sea, harming marine life, and damaging coastal economies.</p>
+    <p>The hard part isn't spotting the oil — it's proving <strong>which ship did it</strong>. By the time anyone notices a spill, the ship has usually moved on. And vessels dumping illegally often deliberately switch off their location tracker to avoid getting caught.</p>
+    <p style="color:var(--muted); font-size:10.3pt;">The government (NTRO) wants a system that uses satellite images and ship-tracking data together to catch spills and point to the likely culprit.</p>
+  </div>
+
+  <div class="section">
+    <span class="case-no">02 — OUR IDEA</span>
+    <div class="lede-box">
+      <span class="tiny">IN ONE SENTENCE</span>
+      We work backward, like a detective: find the spill → trace it back through ocean currents and wind to where it most likely started → check which ships were actually there at that place and time → explain, step by step, why we suspect the ship we suspect.
+    </div>
+  </div>
+
+  <div class="section">
+    <span class="case-no">03 — HOW IT WORKS</span>
+    <h2>Seven steps, start to finish</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Spot the spill using radar images</h3>
+          <p>Regular satellite photos need daylight and clear skies. We use radar satellite images instead, which see through clouds and darkness — exactly when illegal dumping is most likely.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Make sure it's actually oil</h3>
+          <p>Algae, calm water, and light rain can look like oil in radar images. A filter rules these out before we chase a false alarm.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Measure the spill</h3>
+          <p>Its size, shape, and direction become clues for the next step.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Trace it backward in time</h3>
+          <p>Using a trusted, existing ocean-science tool, we run the spill's drift <strong>backward</strong> — estimating roughly where and when it started, not just where it ended up.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h3>Check which ships were actually there</h3>
+          <p>Ships constantly broadcast their location (like a GPS beacon). We pull historical ship data for that estimated time and place.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <h3>Score each nearby ship on multiple clues</h3>
+          <p>Right place? Right time? Consistent direction of travel? Tracker went quiet during the window? Every clue adds to a transparent score.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">7</div>
+        <div class="step-body">
+          <h3>Show it all on a simple dashboard</h3>
+          <p>A map with the spill, the estimated origin area, and ship tracks — plus a ranked suspect list with a plain-language reason for each.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <div class="section">
+    <span class="case-no">04 — THE LANDSCAPE</span>
+    <h2>What already exists (being honest about it)</h2>
+    <div class="honest-box">
+      <p style="margin:0;">We're not claiming to invent something nobody has thought of:</p>
+      <ul>
+        <li><strong>CleanSeaNet</strong>, run by the European Maritime Safety Agency, already does something similar for European waters.</li>
+        <li>Researchers have published studies doing versions of this, including some over Indian waters.</li>
+        <li>Some public tracking tools already flag ships that suspiciously go dark.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section">
+    <span class="case-no">05 — THE DIFFERENCE</span>
+    <h2>So what makes ours different?</h2>
+    <table class="compare">
+      <tr><th class="them">What others typically do</th><th class="us">What we do instead</th></tr>
+      <tr>
+        <td class="them">Just detect the oil spill</td>
+        <td class="us">Detect it <strong>and</strong> measure its shape and direction</td>
+      </tr>
+      <tr>
+        <td class="them">Say "the nearest ship is guilty"</td>
+        <td class="us">Trace the spill back to where it <strong>started</strong>, and check who was there <strong>then</strong> — not who's nearby now</td>
+      </tr>
+      <tr>
+        <td class="them">Flag a missing tracker signal as proof of guilt</td>
+        <td class="us">Treat it as <strong>one clue among several</strong> — trackers can fail innocently too</td>
+      </tr>
+      <tr>
+        <td class="them">One vague confidence number</td>
+        <td class="us">A clear breakdown of exactly which clues pointed to this ship, and how strongly</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <span class="case-no">06 — SCOPE</span>
+    <h2>What we're building — and what we're skipping</h2>
+    <div class="two-col">
+      <div class="col build">
+        <h4>Building for the demo</h4>
+        <ul>
+          <li>Spill detection from a real satellite radar image</li>
+          <li>Filtering out false alarms</li>
+          <li>Backward drift tracing with an established tool</li>
+          <li>Matching ship history to the estimated origin</li>
+          <li>Explainable scoring and ranking</li>
+          <li>A visual dashboard</li>
+        </ul>
+      </div>
+      <div class="col skip">
+        <h4>Skipping for now</h4>
+        <ul>
+          <li>Live, real-time coastline monitoring</li>
+          <li>An automatic "100% guilty" verdict</li>
+          <li>Anything needing expensive, non-public data</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <div class="section">
+    <span class="case-no">07 — THE DEMO</span>
+    <h2>One example, start to finish</h2>
+    <div class="timeline">
+      <div class="tl-item"><span class="t">01</span><span class="d">Satellite spots a spill</span></div>
+      <div class="tl-item"><span class="t">02</span><span class="d">System confirms it's really oil, not a false alarm</span></div>
+      <div class="tl-item"><span class="t">03</span><span class="d">System calculates where and when it likely started</span></div>
+      <div class="tl-item"><span class="t">04</span><span class="d">System pulls up which ships were near that spot at that time</span></div>
+      <div class="tl-item"><span class="t">05</span><span class="d">System ranks the ships and explains why the top one is the most likely suspect</span></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <span class="case-no">08 — HONESTY</span>
+    <div class="limit-box">
+      <span class="label">One limitation, upfront</span>
+      We point to the <strong>most likely</strong> ship based on available evidence — we don't claim certainty. Think of it like a detective narrowing down suspects with strong evidence, not a court verdict. That's why we show our reasoning instead of hiding it behind one confidence number: it's meant to help human investigators focus, not replace them.
+    </div>
+  </div>
+
+  <div class="footer">OCEANIQ &nbsp;·&nbsp; SIH26143 &nbsp;·&nbsp; NATIONAL TECHNICAL RESEARCH ORGANISATION</div>
+
+</div>
+</body>
+</html>
