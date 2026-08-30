@@ -142,8 +142,9 @@ destabilises training. The bias is corrected at inference instead:
    in ~30s). Any positive prediction there is a false positive, and that number
    is currently unknown.
 
-3. **Treat the current headline metrics as in-distribution only.** Best val
-   mIoU 0.8560 / oil-spill IoU 0.796 was measured on a val split that is
+3. **Treat the current headline metrics as in-distribution only.** Whichever
+   figure you quote — see "Metrics provenance" below, the two runs are not
+   equally evidenced — it was measured on a val split that is
    **95.29% oil-bearing tiles at 27.05% oil pixels** — the same biased
    construction as train. Those figures should not be quoted as expected
    performance on broad SAR scenes.
