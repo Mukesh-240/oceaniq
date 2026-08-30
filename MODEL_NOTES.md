@@ -170,12 +170,35 @@ Screenshot: `golden_case/checkpoint_verification.png`.
 **val mIoU 0.8560 is safe to present.** It is now backed by the checkpoint's
 own embedded metadata, read live, not by recollection.
 
+#### Ruled out: the file contains no per-class breakdown
+
+Every key dumped with its value type, and recursed to depth 4 for any
+per-class-shaped sequence (weights excluded):
+
+```
+type(ckpt): dict | n_keys = 6
+
+model        OrderedDict  n_tensors=278  first3=['encoder.conv1.weight', ...]
+epoch        int    repr=14
+miou         float  repr=0.8560433387756348
+num_classes  int    repr=2
+class_names  list   repr=['background', 'oil spill']
+encoder      str    repr='resnet34'
+
+  -> 4 leaf values outside model
+keys matching iou/class/metric/score/background/oil : ['miou','num_classes','class_names']
+is per-class IoU present anywhere outside model? -> NO
+```
+
+`class_names` holds labels, not values. **There is no per-class IoU in the
+checkpoint under any key, nested or otherwise.**
+
 Two precisions that still matter:
 
-- **The checkpoint stores `miou`, not per-class IoU.** `oil spill = 0.796`
-  comes from the `AGENT_LOG.md` transcription (commit `d3e35ae`,
-  2026-08-30 13:47:03), not from the file. It is consistent with the run but is
-  one evidential step weaker than the 0.8560.
+- **The checkpoint stores `miou` only.** `background = 0.916` and
+  `oil spill = 0.796` come from the `AGENT_LOG.md` transcription (commit
+  `d3e35ae`, 2026-08-30 13:47:03), not from the file, and are confirmed absent
+  from it by the scan above. They are one evidential tier below the 0.8560.
 - **The earlier worry that a partial re-run overwrote the checkpoint was
   wrong.** The file's mtime is `2026-08-30 07:07:36` and it still holds epoch
   14, so the epochs 1-3 `<- best, saved` writes visible in the notebook's
@@ -229,13 +252,16 @@ match the logged `0h25m53s` for 15 epochs.
 
 ### Defensible statement for judges
 
-> On the Deep-SAR (Refined SOS) validation split of 1,615 tiles, a U-Net with
-> a ResNet34 ImageNet encoder reached **val mIoU 0.8560** at epoch 14 of a
-> 15-epoch run on a Colab T4 (~26 minutes). Per-class: background 0.916,
-> **oil spill 0.796**.
+> On the Deep-SAR (Refined SOS) validation split of 1,615 tiles, U-Net +
+> ResNet34 reached **val mIoU 0.8560 — verified from the checkpoint's own
+> metadata, read live** (epoch 14 of 15, Colab T4, ~26 min). The
+> background/oil-spill split is **reported as 0.916 / 0.796 in contemporaneous
+> run logs — not independently reproduced, and not present in the checkpoint.**
 
-The 0.8560 is verified against the checkpoint's own metadata. The per-class
-0.796 rests on the contemporaneous log, not on the file.
+**Never state the two at the same confidence.** TIER 1 is the mIoU: read out
+of the artifact. TIER 2 is the per-class split: written down at the time by
+whoever watched the run. If a judge asks specifically about oil-spill IoU, the
+answer is "0.796 from the run log; we have not re-derived it" — not "0.796".
 
 ### What "val" means here
 
@@ -271,13 +297,27 @@ manually corrected after that paper was published, so the two numbers are not
 measured against identical ground truth. Do not claim architectural
 superiority.
 
-### Still not verified
+### Still not verified — OPEN, not closed
 
-A full val re-run has **not** been done. The checkpoint's metadata was read,
-which confirms what the run recorded — it does not independently recompute the
-metric. Re-running `evaluate(model, val_dl)` against these weights would be a
-genuine reproduction, and is the remaining gap. It needs a GPU runtime and the
-dataset staged (~40s from Kaggle).
+**Explicit status: the reproduction has NOT been run, and this is NOT being
+treated as closed by the metadata read.**
+
+Reading `ckpt['miou']` confirms *what the run recorded about itself*. It does
+not recompute anything. If the run's own metric computation had a bug, the
+checkpoint would faithfully store the wrong number and this check would not
+notice. That is a real gap, not a formality.
+
+What would actually close it: run `evaluate(model, val_dl)` from cell 8's
+helper against these weights over the 1,615-tile val split, and compare the
+returned mIoU to 0.8560 and the per-class vector to [0.916, 0.796]. That
+single run would move **both** numbers to tier 1 and settle the per-class
+figures, which no amount of metadata reading can.
+
+Cost: dataset staging (~40s from Kaggle) plus one evaluation pass. On a GPU
+runtime that is a couple of minutes; on CPU roughly 10-20 minutes. Nothing
+blocks it except that it has not been done.
+
+Until it is, the two-tier framing above stands.
 
 ### Blocked
 

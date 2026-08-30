@@ -454,6 +454,57 @@
       </div>
     </aside>
   </div>
+
+  <!-- ══════════ PIPELINE STRIP ══════════ -->
+  <section id="pipeline-strip" class="shrink-0 border-t bg-paper px-6 py-4" style="border-color:var(--rule)">
+    <div class="mx-auto max-w-[1100px]">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-5">
+        <!-- Detect Card -->
+        <div class="flex-1 w-full border bg-vellum p-3" style="border-color:var(--rule-soft)">
+          <h4 class="font-display text-[12.5px] font-bold tracking-[.05em] text-ink uppercase mb-2">Detect</h4>
+          <img src="assets/detect_before_after.png" alt="Raw SAR tile next to screened output" class="w-full h-[90px] object-cover" 
+               onerror="this.outerHTML='<div class=\'flex items-center justify-center h-[90px] border border-dashed text-[10.5px] font-mono text-slate\' style=\'border-color:var(--rule-soft)\'>Raw SAR tile next to screened output</div>'">
+          <p class="mt-2.5 text-[11.5px] text-slate leading-relaxed">Satellite observation screened for oil slick boundaries.</p>
+        </div>
+        
+        <div class="text-slate font-bold hidden md:block">→</div>
+
+        <!-- Reconstruct Card -->
+        <div class="flex-1 w-full border bg-vellum p-3" style="border-color:var(--rule-soft)">
+          <h4 class="font-display text-[12.5px] font-bold tracking-[.05em] text-ink uppercase mb-2">Reconstruct</h4>
+          <img src="assets/drift_frame.png" alt="Backward drift simulation frame" class="w-full h-[90px] object-cover" 
+               onerror="this.outerHTML='<div class=\'flex items-center justify-center h-[90px] border border-dashed text-[10.5px] font-mono text-slate\' style=\'border-color:var(--rule-soft)\'>Backward drift simulation frame</div>'">
+          <p class="mt-2.5 text-[11.5px] text-slate leading-relaxed">Drift simulation back-projects slick to an origin region.</p>
+        </div>
+
+        <div class="text-slate font-bold hidden md:block">→</div>
+
+        <!-- Attribute Card -->
+        <div class="flex-1 w-full border bg-vellum p-3" style="border-color:var(--rule-soft)">
+          <h4 class="font-display text-[12.5px] font-bold tracking-[.05em] text-ink uppercase mb-2">Attribute</h4>
+          <img src="assets/attribution_map.png" alt="Matched vessel with evidence score" class="w-full h-[90px] object-cover" 
+               onerror="this.outerHTML='<div class=\'flex items-center justify-center h-[90px] border border-dashed text-[10.5px] font-mono text-slate\' style=\'border-color:var(--rule-soft)\'>Matched vessel with evidence score</div>'">
+          <p class="mt-2.5 text-[11.5px] text-slate leading-relaxed">Vessels scored against evidence constraints.</p>
+        </div>
+      </div>
+
+      <!-- Metrics Row -->
+      <div class="mt-5 flex flex-col md:flex-row items-center justify-around border-t pt-4" style="border-color:var(--rule-soft)">
+        <div class="text-center">
+          <div class="font-mono text-[10px] tracking-[.13em] uppercase text-slate mb-1">Oil area retained</div>
+          <div class="font-display text-[17px] font-bold text-ink">99.49%</div>
+        </div>
+        <div class="text-center border-t md:border-t-0 md:border-l px-0 md:px-8 pt-3 md:pt-0" style="border-color:var(--rule-soft)">
+          <div class="font-mono text-[10px] tracking-[.13em] uppercase text-slate mb-1">Class balance (Deep-SAR training set)</div>
+          <div class="font-display text-[17px] font-bold text-ink">3.0 : 1</div>
+        </div>
+        <div class="text-center border-t md:border-t-0 md:border-l px-0 md:px-8 pt-3 md:pt-0" style="border-color:var(--rule-soft)">
+          <div class="font-mono text-[10px] tracking-[.13em] uppercase text-slate mb-1">Evidence score</div>
+          <div class="font-display text-[17px] font-bold text-ink">23.7 <span class="text-[12.5px] font-medium text-slate ml-1">Weak</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <script>
