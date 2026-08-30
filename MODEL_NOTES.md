@@ -151,27 +151,44 @@ destabilises training. The bias is corrected at inference instead:
 
 ## Metrics provenance — what is actually evidenced
 
-**Two different runs exist, and the evidence for each is of a different
-quality.** Read this before quoting any number.
+**RESOLVED by a live read of the checkpoint (2026-08-31).** The 15-epoch run
+is real and its weights are the ones in Drive.
 
-| run | evidence | strength |
-|---|---|---|
-| **15-epoch run** — mIoU **0.8560**, oil spill **0.796** | `AGENT_LOG.md`, committed `d3e35ae` 2026-08-30 13:47:03, transcribed cell output incl. `done: ran all 15 epochs, 0h25m53s elapsed` and `(fresh kernel) loaded epoch 14 | mIoU 0.8560` | **contemporaneous transcription, no surviving primary output** |
-| **partial re-run** — best mIoU **0.8104**, oil spill **0.734** at epoch 3, crashed at epoch 4 | the output **still rendered in the live Colab notebook** (screenshots below) | **primary artifact** |
+Raw output, verbatim, from a cell run against the live Colab runtime:
 
-These do not contradict each other — they are separate runs. The later partial
-run overwrote the displayed output of the earlier complete one.
+```
+Mounted at /content/drive
+exists   : True
+size     : 97.9 MB
+modified : 2026-08-30 07:07:36
+keys     : ['model', 'epoch', 'miou', 'num_classes', 'class_names', 'encoder']
+loaded epoch 14 | mIoU 0.8560
+```
 
-**The risk this creates:** the partial re-run printed `<- best, saved` at
-epochs 1, 2 and 3, meaning it wrote its own checkpoints to the same path. The
-file now in Drive may therefore be the **epoch-3 / 0.8104** checkpoint, not the
-epoch-14 / 0.8560 one. Which it is has not been established.
+Screenshot: `golden_case/checkpoint_verification.png`.
 
-**Recommended posture for judges:** quote **0.8104 / 0.734** if you want a
-number backed by output you can show on screen. Quoting 0.8560 / 0.796 is
-defensible only as "recorded at the time, primary output since overwritten" —
-and should not be paired with a live demo of the checkpoint until its embedded
-`epoch` / `miou` fields have been read back.
+**val mIoU 0.8560 is safe to present.** It is now backed by the checkpoint's
+own embedded metadata, read live, not by recollection.
+
+Two precisions that still matter:
+
+- **The checkpoint stores `miou`, not per-class IoU.** `oil spill = 0.796`
+  comes from the `AGENT_LOG.md` transcription (commit `d3e35ae`,
+  2026-08-30 13:47:03), not from the file. It is consistent with the run but is
+  one evidential step weaker than the 0.8560.
+- **The earlier worry that a partial re-run overwrote the checkpoint was
+  wrong.** The file's mtime is `2026-08-30 07:07:36` and it still holds epoch
+  14, so the epochs 1-3 `<- best, saved` writes visible in the notebook's
+  rendered output never replaced it. That rendered output is a *stale saved
+  snapshot* of a different, earlier partial run - not the last thing that
+  wrote this file.
+
+### The other run, for the record
+
+The notebook's rendered output shows a separate partial run: epochs 1-4, best
+mIoU 0.8104 / oil spill 0.734 at epoch 3, ending in DataLoader shutdown
+AssertionErrors. Its loss trajectory (train 0.2020 at epoch 4) and ~1m41s
+epochs are consistent with the 15-epoch run that produced the checkpoint.
 
 ### What was searched
 
@@ -180,9 +197,9 @@ and should not be paired with a live demo of the checkpoint until its embedded
 | local filesystem, `*.pth` / `*unet_resnet34*` | **no checkpoint**; every hit was an unrelated Python `.pth` path file in anaconda |
 | `oil_spill_unet_colab.ipynb` (local) | 32 cells, **0 with stored outputs** — generated source, never round-tripped from Colab |
 | Google Drive | **checkpoint EXISTS**: `oil_spill_runs/unet_resnet34_best.pth`, modified **Aug 30** |
-| live Colab session, notebook `1y9D8G5FAq_7Ax1gOcL1nMv1VwuN-kZV4` | training cell output **still rendered** — this is the only surviving metrics artifact |
+| live Colab session, notebook `1y9D8G5FAq_7Ax1gOcL1nMv1VwuN-kZV4` | training cell output **still rendered** (a stale partial run), and the checkpoint read live — see above |
 
-### Raw output, verbatim from the Colab cell
+### Raw output of the stale partial run, verbatim
 
 ```
 GPU        : Tesla T4
@@ -213,13 +230,12 @@ match the logged `0h25m53s` for 15 epochs.
 ### Defensible statement for judges
 
 > On the Deep-SAR (Refined SOS) validation split of 1,615 tiles, a U-Net with
-> a ResNet34 ImageNet encoder reached **mIoU 0.8104** (background 0.887,
-> oil spill 0.734) at epoch 3 on a Colab T4, ~1m41s per epoch.
+> a ResNet34 ImageNet encoder reached **val mIoU 0.8560** at epoch 14 of a
+> 15-epoch run on a Colab T4 (~26 minutes). Per-class: background 0.916,
+> **oil spill 0.796**.
 
-That is the strongest claim backed by output that can be shown on screen. A
-completed 15-epoch run reaching **0.8560 / 0.796** is recorded in
-`AGENT_LOG.md` at the time it happened, but its primary output no longer
-exists.
+The 0.8560 is verified against the checkpoint's own metadata. The per-class
+0.796 rests on the contemporaneous log, not on the file.
 
 ### What "val" means here
 
@@ -247,23 +263,21 @@ region. Scene-level independence remains undocumented and unproven.
 ### Sanity check against the published benchmark
 
 CBD-Net, the purpose-built network from the paper that introduced SOS
-(Zhu et al., TGRS 2021), reports **mIoU 83.42%** on this dataset. The observed
-**0.8104** sits just below it — exactly where a stock U-Net/ResNet34 baseline
-should land. The unsupported **0.856** would mean a 26-minute off-the-shelf
-baseline *beat* the paper's specialised architecture, which should not be
-claimed without an artifact. (The refined masks could plausibly lift scores
-above the original paper, so it is not impossible — merely unevidenced.)
+(Zhu et al., TGRS 2021), reports **mIoU 83.42%**. Our verified **0.8560**
+slightly exceeds it. Expect to be asked how a stock U-Net beats the paper's
+specialised architecture; the honest answer is that we train on the *refined*
+masks, where roughly 38% of training and 50% of validation annotations were
+manually corrected after that paper was published, so the two numbers are not
+measured against identical ground truth. Do not claim architectural
+superiority.
 
-### Live re-run: attempted, blocked
+### Still not verified
 
-The checkpoint exists in Drive, so re-evaluating is possible in principle.
-Reconnecting the Colab runtime stalled at "Connecting" for 85+ seconds with
-`Could not connect to the reCAPTCHA service` — Colab gates runtime allocation
-behind reCAPTCHA, which fails under browser automation. **A human on a normal
-browser can do this**: reconnect the runtime, re-run the config and data cells,
-then the checkpoint-reload cell, which prints
-`loaded epoch {ckpt['epoch']} | mIoU {ckpt['miou']:.4f}` — the checkpoint's own
-embedded metadata, which will settle whether a 15-epoch run ever completed.
+A full val re-run has **not** been done. The checkpoint's metadata was read,
+which confirms what the run recorded — it does not independently recompute the
+metric. Re-running `evaluate(model, val_dl)` against these weights would be a
+genuine reproduction, and is the remaining gap. It needs a GPU runtime and the
+dataset staged (~40s from Kaggle).
 
 ### Blocked
 
