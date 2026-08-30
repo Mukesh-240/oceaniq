@@ -17,3 +17,29 @@ kaggle.json
 # Secrets - never commit
 .env
 .env.*
+
+# --- hardened for public/shared hosting ---
+# credentials anywhere in the tree, not just the root
+**/kaggle.json
+**/.env
+**/*.pem
+**/*.key
+credentials.json
+client_secret*.json
+service_account*.json
+
+# model weights - too large for git regardless of secrecy
+*.pt
+*.ckpt
+*.h5
+*.onnx
+*.safetensors
+
+# local env / tooling
+.venv/
+venv/
+.DS_Store
+/tmp/
+scratch/
+*.bak
+fixtures/*.bak
