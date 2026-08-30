@@ -18,11 +18,14 @@ manually* file picker as an escape hatch. Serving over HTTP is the intended path
 |---|---|
 | `index.html` | The whole app — markup, styles, reveal controller |
 | `mock-data.json` | The data contract (swap this for real pipeline output) |
-| `assets/sar-scene.svg` | Synthetic SAR scene used as `satellite_image_url` |
+| `assets/scene_palsar_0.png` | Real SAR chip (PALSAR) used as `satellite_image_url` |
+| `golden_case/build_golden_case.py` | Live pipeline: mask -> drift origin -> GFW -> `expected_output.json` |
+| `golden_case/expected_output.json` | Real pipeline output, same contract as the mock |
+| `golden_case/test_geometry.py` | 9 geometry/scoring self-checks (`python golden_case/test_geometry.py`) |
 | `PRODUCT.md` | Confirmed product truth: users, purpose, constraints, principles |
 | `lib/leaflet.js` `lib/leaflet.css` | Leaflet 1.9.4 — map |
 | `lib/anime.min.js` | Anime.js 3.2.2 — SVG stroke draw-in for the slick and tracks |
-| `lib/motion.js` | Motion 11.11.17 — staged sequencing, stagger, meters |
+| `lib/motion.js` | Motion 10.18.0 (UMD) — staged sequencing, stagger, meters |
 | `lib/tailwind.js` | Tailwind Play CDN 3.4.16, self-hosted |
 | `lib/fonts.css` `lib/fonts/` | Space Grotesk + IBM Plex Sans + IBM Plex Mono, self-hosted woff2 |
 | `serve.bat` | Starts a local static server and opens the page |
@@ -36,10 +39,18 @@ runtime network request is the Esri World Light Gray basemap (`initMap()` in
 Change **one line** near the top of the app script:
 
 ```js
-const DATA_SOURCE = 'mock-data.json';   // -> 'https://api.example.org/incident/42'
+const DATA_SOURCES = ['golden_case/expected_output.json', 'mock-data.json'];
 ```
 
-Nothing else reads the data source.
+The first source that loads wins, so the real pipeline output is preferred and the
+mock is the fallback. Nothing else reads the data source.
+
+### The model checkpoint is not in this repo
+
+`unet_resnet34_best.pth` (~100 MB, val mIoU 0.856 / oil-spill IoU 0.796) is gitignored
+and lives only in Google Drive at `MyDrive/oil_spill_runs/`. Segmentation notebooks
+will fail at the checkpoint load until you copy it there or retrain (~26 min, Colab T4).
+The dashboard does not need it — it reads the JSON.
 
 ### Data contract
 

@@ -279,6 +279,16 @@
     </div>
   </header>
 
+  <!-- Scenario banner: driven by payload.scenario, not hardcoded. A relocated or
+       synthetic case must announce itself to a viewer, not only in the JSON. -->
+  <div id="scenarioBar" class="hidden shrink-0 border-b px-5 py-2"
+       style="border-color:var(--amber);background:rgba(232,152,58,.10)" role="note">
+    <p class="font-mono text-[10.5px] font-bold tracking-[.13em]" style="color:var(--amber-ink)">
+      <span id="scenarioLabel"></span>
+    </p>
+    <p id="scenarioDetail" class="mt-1 text-[11.5px] leading-relaxed text-ink"></p>
+  </div>
+
   <div id="shell" class="flex-1 flex min-h-0" style="--rail-l:286px;--rail-r:392px">
 
     <!-- ══════════ CASE RAIL ══════════ -->
@@ -360,8 +370,8 @@
           </p>
         </div>
         <p class="mt-3 font-mono text-[10px] leading-relaxed text-slate">
-          <span class="font-semibold">DEMONSTRATION DATA.</span> Vessels, tracks, scores and the scene
-          raster are synthetic. No real incident or vessel is depicted.
+          <span id="provNote"><span class="font-semibold">DEMONSTRATION DATA.</span> Vessels, tracks,
+          scores and the scene raster are synthetic. No real incident or vessel is depicted.</span>
         </p>
       </section>
     </aside>
@@ -449,10 +459,12 @@
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    OceanIQ — reconstruction console
-   Swap DATA_SOURCE for the real pipeline endpoint; nothing else changes.
+   Swap DATA_SOURCES for the real pipeline endpoint; nothing else changes.
    ═══════════════════════════════════════════════════════════════════ */
 
-const DATA_SOURCE = 'mock-data.json';
+// Real pipeline output first, design mock as the fallback. Flip the order to
+// present the fuller mock scene; the banner tells the viewer which one is on screen.
+const DATA_SOURCES = ['golden_case/expected_output.json', 'mock-data.json'];
 
 const { animate, stagger } = Motion;
 const $ = s => document.querySelector(s);
@@ -772,13 +784,14 @@ function row(ship,i){
 
 function factors(ship, ink){
   const rows = ship.factors.map(f => {
-    const pct = Math.round(f.score / f.max * 100);
+    const max = f.max ?? 100;
+    const pct = Math.round(f.score / max * 100);
     return `
       <span class="block pt-3">
         <span class="flex items-baseline justify-between gap-3">
           <span class="font-mono text-[10.5px] font-medium">${f.label}</span>
           <span class="shrink-0 font-mono text-[10.5px] num" style="color:${ink}">
-            <span class="font-semibold">${f.score}</span><span class="text-slate">/${f.max}</span>
+            <span class="font-semibold">${f.score}</span><span class="text-slate">/${max}</span>
           </span>
         </span>
         <span class="measure mt-1.5 block"><i data-fbar="${pct}" style="background:${ink}"></i></span>
@@ -911,7 +924,16 @@ function sceneOf(d){
 
 function ingest(d){
   S.data = d;
-  S.ships = [...d.candidate_ships].sort((a,b) => b.score - a.score);
+  S.ships = [...(d.candidate_ships || [])].sort((a,b) => b.score - a.score);
+
+  // A scenario label is only real if a viewer can see it; the JSON field alone is not the claim.
+  const bar = $('#scenarioBar');
+  if (d.scenario){
+    $('#scenarioLabel').textContent  = d.scenario;
+    $('#scenarioDetail').textContent = d.scenario_detail || '';
+    $('#scenarioDetail').classList.toggle('hidden', !d.scenario_detail);
+    bar.classList.remove('hidden');
+  } else bar.classList.add('hidden');
   const inc = d.incident || {}, sc = sceneOf(d);
 
   $('#mCase').textContent   = inc.case_id || sc.id || '·';
@@ -930,6 +952,7 @@ function ingest(d){
   $('#cConfBar').style.width = conf == null ? '0%' : Math.round(conf*100) + '%';
 
   $('#cSurveyNote').textContent = inc.survey_note || '';
+  if (d.scenario_detail) $('#provNote').textContent = d.scenario_detail;
   $('#cMethod').textContent = d.origin_region?.method
     ? 'Origin method: ' + d.origin_region.method + '.' : '';
 
@@ -950,14 +973,18 @@ function ingest(d){
 }
 
 async function boot(){
-  try{
-    const res = await fetch(DATA_SOURCE, { cache:'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    ingest(await res.json());
-  }catch(err){
-    console.warn('[OceanIQ] data source unreachable:', err);
-    $('#loadErr').classList.replace('hidden','flex');
+  for (const src of DATA_SOURCES){
+    try{
+      const res = await fetch(src, { cache:'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      ingest(await res.json());
+      console.info('[OceanIQ] loaded', src);
+      return;
+    }catch(err){
+      console.warn('[OceanIQ] could not load ' + src + ':', err.message);
+    }
   }
+  $('#loadErr').classList.replace('hidden','flex');
 }
 
 $('#fileInput').addEventListener('change', async e => {

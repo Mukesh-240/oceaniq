@@ -362,7 +362,8 @@ def _score_candidate_local(track, origin, win_start, win_end, drift_bearing,
                   "No AIS gap detected inside the window."))
 
     total = sum(WEIGHTS[l] * s for l, s, _ in f)
-    return round(total, 1), [{"label": l, "score": round(s, 1), "explanation": e}
+    return round(total, 1), [{"label": l, "score": round(s, 1), "max": 100,
+                              "explanation": e}
                              for l, s, e in f]
 
 
@@ -412,7 +413,7 @@ def main() -> int:
     print("=" * 74)
 
     mask_path = Path(os.environ.get(
-        "OCEANIQ_MASK", ROOT / "data" / "deep-sar-sample" / "mask" / "palsar_0.png"))
+        "OCEANIQ_MASK", ROOT / "assets" / "scene_palsar_0_mask.png"))
     origin_path = FIXTURES / "drift_origin.json"
     if not mask_path.is_file():
         print(f"ERROR: mask not found: {mask_path}")
@@ -558,20 +559,35 @@ def main() -> int:
                       "score": score, "factors": factors})
     ships.sort(key=lambda s: -s["score"])
 
-    doc = {
-        "scenario": "CONTROLLED VALIDATION SCENARIO",
-        "scenario_detail": (
+    # The banner must describe the run that actually happened. It used to say
+    # "relocated" unconditionally, which was false on an untransposed run.
+    if transposed:
+        scenario = "CONTROLLED VALIDATION SCENARIO"
+        scenario_detail = (
             "Not a real historical incident. Drift physics, spill mask, vessel "
             "identities and AIS gaps are real; the scene is relocated to a "
             "location with confirmed 2024 vessel traffic because CMEMS forcing "
-            "for Indian waters is not yet available."),
-        "satellite_image_url": "data/deep-sar-sample/image/palsar_0.png",
+            "for Indian waters is not yet available.")
+    else:
+        scenario = "TECHNICAL DEMONSTRATION - REAL DRIFT, NO RELOCATION"
+        scenario_detail = (
+            "Not a real historical incident. The origin is a real OpenDrift "
+            "backward run over the bundled NorKyst sample (western Norway, "
+            "Nov 2015); no AIS traffic exists there in that window, so no "
+            "candidate vessel is expected.")
+
+    doc = {
+        "scenario": scenario,
+        "scenario_detail": scenario_detail,
+        # assets/, not data/ - data/ is gitignored, so a fresh clone would render
+        # a broken scene raster in the dashboard.
+        "satellite_image_url": "assets/scene_palsar_0.png",
         "spill_mask": spill,
         "origin_region": {"polygon": origin_poly,
                           "time_window": {"start": _iso(win_start), "end": _iso(win_end)}},
         "candidate_ships": ships,
         "provenance": {
-            "scenario": "CONTROLLED VALIDATION - not live oceanography",
+            "scenario": scenario,
             "origin": provenance,
             "drift_forcing": "OpenDrift bundled NorKyst sample (western Norway, Nov 2015)",
             "georeferencing": "Path B - assumed anchor and pixel size, no geotransform",

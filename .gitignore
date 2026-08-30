@@ -1,15 +1,58 @@
-# Impeccable review artifacts (screenshots) - bigger than the app itself
-.impeccable/
+# ============================================================
+# SECRETS - never commit. Restored after they were dropped in
+# adc5809; .env was left stageable for one commit.
+# ============================================================
+.env
+.env.*
+**/.env
+kaggle.json
+**/kaggle.json
+**/*.pem
+**/*.key
+credentials.json
+client_secret*.json
+service_account*.json
+
+# Model weights - too large for git regardless of secrecy
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.onnx
+*.safetensors
+
+# Datasets and archives - regenerate via Kaggle (~39s in Colab), never commit
+oil_spill.zip
+oil_spill_small.zip
+files.zip
+oil_spill/
+data/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
 
 # Local agent/tool hooks: these hardcode absolute home paths and are machine-specific
 .claude/
 .codex/
 .agents/
 
+# Impeccable review artifacts (screenshots) - bigger than the app itself
+.impeccable/
+
 # OS / editor noise
+.DS_Store
 Thumbs.db
 desktop.ini
-.DS_Store
 *.swp
 .vscode/
 .idea/
+
+# Scratch
+/tmp/
+scratch/
+*.bak
+fixtures/*.bak

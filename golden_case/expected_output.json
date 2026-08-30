@@ -1,7 +1,7 @@
 {
   "scenario": "CONTROLLED VALIDATION SCENARIO",
   "scenario_detail": "Not a real historical incident. Drift physics, spill mask, vessel identities and AIS gaps are real; the scene is relocated to a location with confirmed 2024 vessel traffic because CMEMS forcing for Indian waters is not yet available.",
-  "satellite_image_url": "data/deep-sar-sample/image/palsar_0.png",
+  "satellite_image_url": "assets/scene_palsar_0.png",
   "spill_mask": {
     "type": "Polygon",
     "coordinates": [
@@ -80,7 +80,7 @@
   },
   "candidate_ships": [],
   "provenance": {
-    "scenario": "CONTROLLED VALIDATION - not live oceanography",
+    "scenario": "CONTROLLED VALIDATION SCENARIO",
     "origin": "real OpenDrift backward run",
     "drift_forcing": "OpenDrift bundled NorKyst sample (western Norway, Nov 2015)",
     "georeferencing": "Path B - assumed anchor and pixel size, no geotransform",
