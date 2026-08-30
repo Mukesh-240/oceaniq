@@ -59,3 +59,7 @@ fixtures/*.bak
 
 # TTOM mask archives - re-downloadable from Zenodo in ~30s (7 MB), not source
 ttom_masks/
+pitchtmp/
+zen.json
+s2.json
+proof_*.npy
