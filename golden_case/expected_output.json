@@ -1,44 +1,46 @@
 {
+  "scenario": "CONTROLLED VALIDATION SCENARIO",
+  "scenario_detail": "Not a real historical incident. Drift physics, spill mask, vessel identities and AIS gaps are real; the scene is relocated to a location with confirmed 2024 vessel traffic because CMEMS forcing for Indian waters is not yet available.",
   "satellite_image_url": "data/deep-sar-sample/image/palsar_0.png",
   "spill_mask": {
     "type": "Polygon",
     "coordinates": [
       [
         [
-          69.10401499999999,
-          18.531994999999995
+          61.025215,
+          6.708194999999996
         ],
         [
-          69.102415,
-          18.53339499999999
+          61.02361500000001,
+          6.709594999999993
         ],
         [
-          69.09976499999999,
-          18.53614499999999
+          61.020965000000004,
+          6.712344999999992
         ],
         [
-          69.09981499999999,
-          18.53679499999999
+          61.021015000000006,
+          6.712994999999992
         ],
         [
-          69.100315,
-          18.53659499999999
+          61.021515,
+          6.712794999999993
         ],
         [
-          69.101215,
-          18.536194999999992
+          61.022415,
+          6.712394999999994
         ],
         [
-          69.10281499999999,
-          18.534594999999996
+          61.024015000000006,
+          6.710794999999997
         ],
         [
-          69.10401499999999,
-          18.53439499999999
+          61.025215,
+          6.710594999999991
         ],
         [
-          69.10401499999999,
-          18.531994999999995
+          61.025215,
+          6.708194999999996
         ]
       ]
     ]
@@ -49,260 +51,34 @@
       "coordinates": [
         [
           [
-            69.07830014999999,
-            18.487634549999996
+            60.99950015,
+            6.663834549999997
           ],
           [
-            69.12169984999998,
-            18.487634549999996
+            61.042899850000005,
+            6.663834549999997
           ],
           [
-            69.12169984999998,
-            18.55236544999999
+            61.042899850000005,
+            6.728565449999991
           ],
           [
-            69.07830014999999,
-            18.55236544999999
+            60.99950015,
+            6.728565449999991
           ],
           [
-            69.07830014999999,
-            18.487634549999996
+            60.99950015,
+            6.663834549999997
           ]
         ]
       ]
     },
     "time_window": {
-      "start": "2024-06-15T00:00:00Z",
-      "end": "2024-06-15T12:00:00Z"
+      "start": "2024-01-02T12:00:00Z",
+      "end": "2024-01-03T00:00:00Z"
     }
   },
-  "candidate_ships": [
-    {
-      "id": "890019017",
-      "name": "TAIXIANG10-17 62%",
-      "track": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            54.5342,
-            4.1715
-          ],
-          [
-            54.5342,
-            4.1715
-          ]
-        ]
-      },
-      "score": 28.2,
-      "factors": [
-        {
-          "label": "Proximity to origin",
-          "score": 0.0,
-          "explanation": "Closest approach to the reconstructed origin was 2247.7 km."
-        },
-        {
-          "label": "Timing overlap",
-          "score": 100.0,
-          "explanation": "Present for 12.0h of the 12.0h estimated discharge window."
-        },
-        {
-          "label": "Trajectory consistency",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "Drift agreement",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "AIS discrepancy",
-          "score": 32.2,
-          "explanation": "AIS silent for 23.2h inside the window - one clue among five, not proof."
-        }
-      ]
-    },
-    {
-      "id": "994230150",
-      "name": "994230150         9V",
-      "track": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            73.9836,
-            -33.821
-          ],
-          [
-            73.9836,
-            -33.821
-          ]
-        ]
-      },
-      "score": 27.0,
-      "factors": [
-        {
-          "label": "Proximity to origin",
-          "score": 0.0,
-          "explanation": "Closest approach to the reconstructed origin was 5843.0 km."
-        },
-        {
-          "label": "Timing overlap",
-          "score": 100.0,
-          "explanation": "Present for 12.0h of the 12.0h estimated discharge window."
-        },
-        {
-          "label": "Trajectory consistency",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "Drift agreement",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "AIS discrepancy",
-          "score": 19.6,
-          "explanation": "AIS silent for 14.1h inside the window - one clue among five, not proof."
-        }
-      ]
-    },
-    {
-      "id": "591060679",
-      "name": "PINGTAIRONG319-5 72%",
-      "track": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            -132.1391,
-            -11.6432
-          ],
-          [
-            -132.1391,
-            -11.6432
-          ]
-        ]
-      },
-      "score": 23.7,
-      "factors": [
-        {
-          "label": "Proximity to origin",
-          "score": 0.0,
-          "explanation": "Closest approach to the reconstructed origin was 17612.4 km."
-        },
-        {
-          "label": "Timing overlap",
-          "score": 83.3,
-          "explanation": "Present for 10.0h of the 12.0h estimated discharge window."
-        },
-        {
-          "label": "Trajectory consistency",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "Drift agreement",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "AIS discrepancy",
-          "score": 29.1,
-          "explanation": "AIS silent for 21.0h inside the window - one clue among five, not proof."
-        }
-      ]
-    },
-    {
-      "id": "941220256",
-      "name": "0256",
-      "track": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            154.2582,
-            -24.3921
-          ],
-          [
-            154.2582,
-            -24.3921
-          ]
-        ]
-      },
-      "score": 22.1,
-      "factors": [
-        {
-          "label": "Proximity to origin",
-          "score": 0.0,
-          "explanation": "Closest approach to the reconstructed origin was 10379.1 km."
-        },
-        {
-          "label": "Timing overlap",
-          "score": 50.0,
-          "explanation": "Present for 6.0h of the 12.0h estimated discharge window."
-        },
-        {
-          "label": "Trajectory consistency",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "Drift agreement",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "AIS discrepancy",
-          "score": 95.8,
-          "explanation": "AIS silent for 68.9h inside the window - one clue among five, not proof."
-        }
-      ]
-    },
-    {
-      "id": "591072179",
-      "name": "PINGTAIRONG68-5100%",
-      "track": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            -133.4977,
-            -15.7795
-          ],
-          [
-            -133.4977,
-            -15.7795
-          ]
-        ]
-      },
-      "score": 18.6,
-      "factors": [
-        {
-          "label": "Proximity to origin",
-          "score": 0.0,
-          "explanation": "Closest approach to the reconstructed origin was 17596.5 km."
-        },
-        {
-          "label": "Timing overlap",
-          "score": 66.7,
-          "explanation": "Present for 8.0h of the 12.0h estimated discharge window."
-        },
-        {
-          "label": "Trajectory consistency",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "Drift agreement",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "AIS discrepancy",
-          "score": 19.5,
-          "explanation": "AIS silent for 14.0h inside the window - one clue among five, not proof."
-        }
-      ]
-    }
-  ],
+  "candidate_ships": [],
   "provenance": {
     "scenario": "CONTROLLED VALIDATION - not live oceanography",
     "origin": "real OpenDrift backward run",
@@ -313,9 +89,9 @@
     "vessel_identities": "REAL - live GFW query",
     "transposition": {
       "applied": true,
-      "delta_lon": 64.37174,
-      "delta_lat": -41.25652,
-      "epoch_shift_to": "2024-06-15T12:00:00Z",
+      "delta_lon": 56.29295,
+      "delta_lat": -53.08032,
+      "epoch_shift_to": "2024-01-03T00:00:00Z",
       "reason": "GFW holds no vessel data for the NorKyst sample domain in 2015; drift shape and scale are real, map position and epoch are moved."
     }
   }

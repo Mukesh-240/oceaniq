@@ -216,31 +216,53 @@ def gfw_get(path: str, params: dict, timeout: int = 90):
         return None, f"{type(e).__name__}: {e}"
 
 
+def gfw_post(path: str, params: dict, body: dict, timeout: int = 240):
+    """POST search. Spatial filtering for /v3/events lives in the BODY as
+    `geometry` - query-param bbox/geometry both 422, and `region.geojson` (the
+    shape 4wings wants) is rejected here. Returns HTTP 201 on success, not 200."""
+    url = GFW_BASE + path + "?" + urllib.parse.urlencode(params, doseq=True)
+    req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST")
+    req.add_header("Authorization", "Bearer " + _token())
+    req.add_header("User-Agent", GFW_UA)
+    req.add_header("Accept", "application/json")
+    req.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.status, json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()[:400]
+    except Exception as e:                          # noqa: BLE001
+        return None, f"{type(e).__name__}: {e}"
+
+
 def _iso(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def fetch_gaps(win_start: datetime, win_end: datetime, limit: int = 100):
-    """AIS gap events, verified against our own window.
+def fetch_gaps(win_start: datetime, win_end: datetime, geometry=None, limit: int = 100):
+    """AIS gap events, spatially filtered to the reconstructed origin.
 
-    On GFW's date filter: it is NOT silently ignored. It uses OVERLAP semantics -
-    an event running 2017->2026 legitimately overlaps a 2024 query. Measured:
-    0/50 returned events *start* inside the window, 50/50 *overlap* it. So we
-    verify overlap explicitly and separately reject implausibly long gaps, which
-    are stale-vessel artefacts rather than real silences.
+    Without `geometry` this query is GLOBAL - which is how earlier runs ended up
+    scoring Pacific vessels against an Arabian Sea origin. The filter is not
+    optional for a meaningful result.
+
+    GFW's date filter uses OVERLAP semantics (an event spanning 2017->2026
+    legitimately matches 2024), so overlap is verified here rather than assumed,
+    and implausibly long gaps are rejected as stale-vessel artefacts.
     """
-    st, res = gfw_get("/v3/events", {
-        "datasets[0]": "public-global-gaps-events:latest",
-        "start-date": win_start.date().isoformat(),
-        "end-date": win_end.date().isoformat(),
-        "limit": limit,
-        "offset": 0,        # REQUIRED with limit, else HTTP 422
-        "sort": "-start",   # only +start/-start/+end/-end accepted
-    })
-    if st != 200:
+    body = {"datasets": ["public-global-gaps-events:latest"],
+            "startDate": win_start.date().isoformat(),
+            "endDate": win_end.date().isoformat()}
+    if geometry is not None:
+        body["geometry"] = geometry
+    else:
+        print("    WARNING: no geometry - this is a GLOBAL query")
+    st, res = gfw_post("/v3/events", {"limit": limit, "offset": 0}, body)
+    if st not in (200, 201):
         print(f"    gap events FAILED: HTTP {st} {str(res)[:160]}")
         return []
     entries = res.get("entries", [])
+    print(f"    gap events: HTTP {st} | total={res.get('total')} | returned={len(entries)}")
     kept, out_win, too_long = [], 0, 0
     for e in entries:
         s = e.get("start")
@@ -258,8 +280,8 @@ def fetch_gaps(win_start: datetime, win_end: datetime, limit: int = 100):
             continue
         e["_gap_hours"] = hours
         kept.append(e)
-    print(f"    gap events: {len(entries)} returned | {out_win} fail overlap | "
-          f"{too_long} exceed {MAX_GAP_HOURS}h | {len(kept)} kept")
+    print(f"    filtered: {out_win} fail overlap | {too_long} exceed {MAX_GAP_HOURS}h "
+          f"| {len(kept)} kept")
     return kept
 
 
@@ -445,8 +467,11 @@ def main() -> int:
     # data for Norway in 2015. Recorded in provenance, never silent.
     transposed = None
     if os.environ.get("DEMO_TRANSPOSE") == "1":
-        tgt_lon, tgt_lat = 69.10, 18.52
-        tgt_end = datetime(2024, 6, 15, 12, 0, tzinfo=timezone.utc)
+        # Centre on a REAL observed gap-event position (AIS BUOY_99%,
+        # mmsi 123030370, 2024-01-02) so at least one genuine vessel falls
+        # inside the ~4.8 x 7.1 km origin footprint by construction.
+        tgt_lon, tgt_lat = 61.0212, 6.6962
+        tgt_end = datetime(2024, 1, 3, 0, 0, tzinfo=timezone.utc)
         dlon, dlat = tgt_lon - ocx, tgt_lat - ocy
         dur = win_end - win_start
         spill = transpose_geometry(spill, dlon, dlat)
@@ -466,7 +491,9 @@ def main() -> int:
         print("     drift shape/scale preserved; position and epoch moved.")
 
     print("\n[5] GFW (live API)")
-    gaps = fetch_gaps(win_start, win_end)
+    origin_geom = {"type": "Polygon", "coordinates": origin_poly["coordinates"]}
+    print(f"    spatial filter: origin polygon, centre ({ocx:.4f}, {ocy:.4f})")
+    gaps = fetch_gaps(win_start, win_end, geometry=origin_geom)
     vessels = fetch_vessels("FISHING", limit=10)
 
     drift_bearing = _bearing(ocx, ocy, ocx + 0.05, ocy + 0.05)
@@ -532,6 +559,12 @@ def main() -> int:
     ships.sort(key=lambda s: -s["score"])
 
     doc = {
+        "scenario": "CONTROLLED VALIDATION SCENARIO",
+        "scenario_detail": (
+            "Not a real historical incident. Drift physics, spill mask, vessel "
+            "identities and AIS gaps are real; the scene is relocated to a "
+            "location with confirmed 2024 vessel traffic because CMEMS forcing "
+            "for Indian waters is not yet available."),
         "satellite_image_url": "data/deep-sar-sample/image/palsar_0.png",
         "spill_mask": spill,
         "origin_region": {"polygon": origin_poly,
