@@ -62,7 +62,14 @@ def score_candidate(track, origin, win_start, win_end, drift_bearing,
         ov = max(0.0, (min(presence[1], win_end) - max(presence[0], win_start)).total_seconds() / 3600.0)
         win_h = max(1e-6, (win_end - win_start).total_seconds() / 3600.0)
         time_score = min(100.0, 100.0 * ov / win_h)
-        time_reason = f"Present for {ov:.1f}h of the {win_h:.1f}h estimated discharge window."
+        if ov <= 0:
+            # Say WHERE the observation actually fell. "Present for 0.0h" is true
+            # but reads like a near miss; the vessel may be days outside.
+            time_reason = (f"No overlap: observed {presence[0]:%Y-%m-%d %H:%MZ}, "
+                           f"outside the {win_start:%Y-%m-%d %H:%MZ} to "
+                           f"{win_end:%Y-%m-%d %H:%MZ} window.")
+        else:
+            time_reason = f"Present for {ov:.1f}h of the {win_h:.1f}h estimated discharge window."
     else:
         time_score = 0.0
         time_reason = "No temporal overlap with spill window."

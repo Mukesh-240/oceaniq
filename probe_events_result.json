@@ -1,0 +1,22 @@
+{
+  "all of 2024|gaps": {
+    "http": 201,
+    "total": 1
+  },
+  "all of 2024|fishing": {
+    "http": 201,
+    "total": 0
+  },
+  "all of 2024|loitering": {
+    "http": 201,
+    "total": 2
+  },
+  "all of 2024|encounters": {
+    "http": 201,
+    "total": 0
+  },
+  "all of 2024|port_visits": {
+    "http": 201,
+    "total": 0
+  }
+}

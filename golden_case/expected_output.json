@@ -78,7 +78,53 @@
       "end": "2024-01-03T00:00:00Z"
     }
   },
-  "candidate_ships": [],
+  "candidate_ships": [
+    {
+      "id": "422130075",
+      "name": "AL>ARIYA",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            61.0148,
+            6.7186
+          ],
+          [
+            61.0148,
+            6.7186
+          ]
+        ]
+      },
+      "score": 23.7,
+      "factors": [
+        {
+          "label": "Proximity to origin",
+          "score": 94.8,
+          "explanation": "Closest approach to the reconstructed origin was 2.6 km."
+        },
+        {
+          "label": "Timing overlap",
+          "score": 0.0,
+          "explanation": "No overlap: observed 2024-01-06 23:48Z, outside the 2024-01-02 12:00Z to 2024-01-03 00:00Z window."
+        },
+        {
+          "label": "Trajectory consistency",
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
+        },
+        {
+          "label": "Drift agreement",
+          "score": 0.0,
+          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
+        },
+        {
+          "label": "AIS discrepancy",
+          "score": 0.0,
+          "explanation": "No AIS gap detected inside the window."
+        }
+      ]
+    }
+  ],
   "provenance": {
     "scenario": "CONTROLLED VALIDATION SCENARIO",
     "origin": "real OpenDrift backward run",
@@ -93,6 +139,8 @@
       "delta_lat": -53.08032,
       "epoch_shift_to": "2024-01-03T00:00:00Z",
       "reason": "GFW holds no vessel data for the NorKyst sample domain in 2015; drift shape and scale are real, map position and epoch are moved."
-    }
+    },
+    "candidate_source": "loitering events (date range widened to 2024, box unchanged)",
+    "candidate_caveat": "Gap events in the 12h window: 0. The one gap-event object was type=gear (a buoy), not a vessel. The listed vessel comes from a loitering event at the SAME origin box with the date range widened to 2024; it therefore scores 0 on timing overlap, which is why its total is low. The origin box was never widened."
   }
 }

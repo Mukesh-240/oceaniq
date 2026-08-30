@@ -1,0 +1,20 @@
+origin box  lon 60.9995..61.0429  lat 6.6638..6.7286
+window      2024-01-02T12:00:00Z -> 2024-01-03T00:00:00Z
+
+--- demo window (12h): 2024-01-02 -> 2024-01-03 ---
+  gaps         HTTP 201  total=1
+  fishing      HTTP None  TimeoutError: The read operation timed out
+  loitering    HTTP 201  total=0
+  encounters   HTTP None  TimeoutError: The read operation timed out
+  port_visits  HTTP None  TimeoutError: The read operation timed out
+
+--- all of 2024: 2024-01-01 -> 2024-12-31 ---
+  gaps         HTTP None  URLError: <urlopen error [Errno 11001] getaddrinfo failed>
+  fishing      HTTP None  URLError: <urlopen error [Errno 11001] getaddrinfo failed>
+  loitering    HTTP None  URLError: <urlopen error [Errno 11001] getaddrinfo failed>
+  encounters   HTTP None  URLError: <urlopen error [Errno 11001] getaddrinfo failed>
+  port_visits  HTTP None  URLError: <urlopen error [Errno 11001] getaddrinfo failed>
+
+======================================================================
+HIT  demo window (12h) / gaps: 1 events
+      2024-01-02T01:56  AIS BUOY_99%  (None)  type=gear

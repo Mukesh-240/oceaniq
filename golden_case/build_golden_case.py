@@ -9,7 +9,9 @@ Chain
     4. weighted scoring           -> exactly 5 factors per ship
     5. schema validation          -> golden_case/expected_output.json
 
-CONTROLLED VALIDATION SCENARIO - NOT LIVE OCEANOGRAPHY.
+NOT LIVE OCEANOGRAPHY. With DEMO_TRANSPOSE=1 the scene is relocated and the
+output is labelled CONTROLLED VALIDATION SCENARIO; without it the run stays
+at the real drift location and says so instead.
 The drift step uses OpenDrift's bundled NorKyst sample forcing; CMEMS access is
 not approved yet. Provenance of the origin is detected at runtime and recorded
 in the output so nobody mistakes a stand-in for a real run.
@@ -285,6 +287,24 @@ def fetch_gaps(win_start: datetime, win_end: datetime, geometry=None, limit: int
     return kept
 
 
+def fetch_events(dataset: str, d0: str, d1: str, geometry, limit: int = 50):
+    """Any GFW event dataset, spatially filtered to the origin.
+
+    Used to ask whether ANY real vessel touched the origin box, after the
+    gaps-only query came back empty. A failed request returns None, which is
+    NOT the same as an empty list - the caller must not treat it as "no vessels".
+    """
+    body = {"datasets": [dataset], "startDate": d0, "endDate": d1,
+            "geometry": geometry}
+    st, res = gfw_post("/v3/events", {"limit": limit, "offset": 0}, body)
+    if st not in (200, 201):
+        print(f"    {dataset}: FAILED HTTP {st} - result unknown, not zero")
+        return None
+    entries = res.get("entries", [])
+    print(f"    {dataset}: HTTP {st} | total={res.get('total')}")
+    return entries
+
+
 def fetch_vessels(query: str, limit: int = 10):
     # NOTE the inconsistency: /v3/events REQUIRES offset alongside limit, but
     # /v3/vessels/search REJECTS it ("property offset should not exist", 422).
@@ -333,8 +353,12 @@ def _score_candidate_local(track, origin, win_start, win_end, drift_bearing,
     ov = max(0.0, (min(presence[1], win_end) - max(presence[0], win_start))
              .total_seconds() / 3600.0)
     win_h = max(1e-6, (win_end - win_start).total_seconds() / 3600.0)
-    f.append(("Timing overlap", min(100.0, 100.0 * ov / win_h),
-              f"Present for {ov:.1f}h of the {win_h:.1f}h estimated discharge window."))
+    if ov <= 0:
+        why = (f"No overlap: observed {presence[0]:%Y-%m-%d %H:%MZ}, outside the "
+               f"{win_start:%Y-%m-%d %H:%MZ} to {win_end:%Y-%m-%d %H:%MZ} window.")
+    else:
+        why = f"Present for {ov:.1f}h of the {win_h:.1f}h estimated discharge window."
+    f.append(("Timing overlap", min(100.0, 100.0 * ov / win_h), why))
 
     if len(track) >= 2:
         course = _bearing(track[0][0], track[0][1], track[-1][0], track[-1][1])
@@ -407,8 +431,10 @@ def validate(doc: dict) -> None:
 
 # --------------------------------------------------------------------------
 def main() -> int:
+    # The header must not assert a relocation before we know whether one happened;
+    # the scenario is decided further down, once the transpose is resolved.
     print("=" * 74)
-    print("OCEANIQ golden case - CONTROLLED VALIDATION SCENARIO")
+    print("OCEANIQ golden case")
     print("Drift forcing: OpenDrift bundled sample data, NOT live CMEMS.")
     print("=" * 74)
 
@@ -515,14 +541,42 @@ def main() -> int:
                            # 403 for this token, so this single point is the only
                            # genuine position we can obtain per vessel.
                            "lon": pos.get("lon"), "lat": pos.get("lat")})
+    source = "gap events" if candidates else None
+
+    # No gap events survived. Before concluding "no vessels", ask the other
+    # event datasets whether any real vessel touched this box at all. Widening
+    # the DATE range is disclosed below and costs the vessel its temporal score;
+    # widening the BOX is not done - that would move the question.
     if not candidates:
-        for i, v in enumerate(vessels[:5]):
-            si = (v.get("selfReportedInfo") or [{}])[0]
-            candidates.append({"mmsi": si.get("ssvid") or f"unknown-{i}",
-                               "name": si.get("shipname") or f"UNKNOWN-{i}",
-                               "gap_hours": 0.0})
-    print(f"    candidate source: "
-          f"{'gap events' if gaps else 'vessel name search (fallback)'} "
+        loiter = fetch_events("public-global-loitering-events:latest",
+                              "2024-01-01", "2024-12-31", origin_geom)
+        if loiter is None:
+            print("    loitering query FAILED - candidate count is unknown, not zero")
+            loiter = []
+        for e in loiter:
+            v = e.get("vessel") or {}
+            # type=gear is a buoy or a net, not a ship. Scoring a fish-aggregating
+            # device as a suspect vessel would be a category error.
+            if (v.get("type") or "").lower() == "gear":
+                print(f"    skipping {v.get('name')}: type=gear, not a vessel")
+                continue
+            pos = e.get("position") or {}
+            ev_start = e.get("start")
+            candidates.append({"mmsi": v.get("ssvid") or "unknown",
+                               "name": v.get("name") or "UNNAMED",
+                               "gap_hours": 0.0,
+                               "lon": pos.get("lon"), "lat": pos.get("lat"),
+                               "event_time": ev_start,
+                               "outside_window": True})
+            print(f"    real vessel: {v.get('name')} flag={v.get('flag')} "
+                  f"type={v.get('type')} at {ev_start}")
+        if candidates:
+            source = "loitering events (date range widened to 2024, box unchanged)"
+
+    # The old fallback here ran a GLOBAL vessel name search for "FISHING" and
+    # scored whatever came back. Those vessels had no spatial relationship to the
+    # origin at all. Removed: an empty result is the honest answer.
+    print(f"    candidate source: {source or 'NONE - no real vessel at this origin'} "
           f"-> {len(candidates)} vessels")
 
     ships = []
@@ -541,7 +595,17 @@ def main() -> int:
         track = {"type": "LineString", "coordinates": track_pts}
         assert_lonlat(track, f"ship[{i}].track")
         gap_h = c["gap_hours"]
-        presence = (win_start, win_start + timedelta(hours=6 + 2 * i))
+        # Presence must come from the event's real timestamp. This used to be
+        # (win_start, win_start + 6 + 2*i hours) - a fabricated interval that
+        # made every candidate report a confident, specific, invented overlap.
+        ev = c.get("event_time")
+        if ev:
+            ev_t = datetime.fromisoformat(ev.replace("Z", "+00:00"))
+            ev_end = ev_t + timedelta(hours=float(c.get("event_hours") or 1.0))
+            presence = (ev_t, ev_end)
+        else:
+            # No timestamp at all: claim no presence rather than invent one.
+            presence = (win_end, win_end)
         score, factors = score_candidate(track_pts, (ocx, ocy), win_start, win_end,
                                          drift_bearing, gap_h, presence)
         if single_obs:
@@ -598,6 +662,13 @@ def main() -> int:
             "track_quality": "single_observation - heading and drift agreement not computable",
             "vessel_identities": "REAL - live GFW query",
             "transposition": transposed or {"applied": False},
+            "candidate_source": source or "none - no real vessel at this origin",
+            "candidate_caveat": (
+                "Gap events in the 12h window: 0. The one gap-event object was "
+                "type=gear (a buoy), not a vessel. The listed vessel comes from a "
+                "loitering event at the SAME origin box with the date range "
+                "widened to 2024; it therefore scores 0 on timing overlap, which "
+                "is why its total is low. The origin box was never widened."),
         },
     }
     validate(doc)

@@ -370,8 +370,7 @@
           </p>
         </div>
         <p class="mt-3 font-mono text-[10px] leading-relaxed text-slate">
-          <span id="provNote"><span class="font-semibold">DEMONSTRATION DATA.</span> Vessels, tracks,
-          scores and the scene raster are synthetic. No real incident or vessel is depicted.</span>
+          <span id="provNote"></span>
         </p>
       </section>
     </aside>
@@ -952,7 +951,7 @@ function ingest(d){
   $('#cConfBar').style.width = conf == null ? '0%' : Math.round(conf*100) + '%';
 
   $('#cSurveyNote').textContent = inc.survey_note || '';
-  if (d.scenario_detail) $('#provNote').textContent = d.scenario_detail;
+  $('#provNote').textContent = d.scenario_detail || '';
   $('#cMethod').textContent = d.origin_region?.method
     ? 'Origin method: ' + d.origin_region.method + '.' : '';
 
