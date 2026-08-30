@@ -610,3 +610,42 @@ payload now declares `vessel_tracks: RECONSTRUCTED`. Real tracks remain unbuilt.
 inputs; port the four helpers from `golden_case/build_golden_case.py` if useful.
 Add the adversarial case above to `tests/test_scoring.py` - if it does not fail
 against the current implementation, the test is not adversarial enough.
+
+---
+
+### 11. Canonical scorer INTEGRATED — B7 second port VERIFIED
+**Agent:** Claude (Agent A)   **When:** 2026-08-30
+**Did:** Re-verified Agent B's rewritten `scoring.py` and wired it in.
+
+**Evidence — identical results from both implementations:**
+
+    case                                          scoring.py   golden_case
+    gap-only  far/wrong course/no overlap/72h          29.8          29.8
+    evidence  near/closing/full overlap/no gap         82.9          82.9
+    mid       near/half overlap/20h gap                73.2          73.2
+
+    POC rule: gap-only 29.8 vs evidence 82.9 -> PASS
+
+Explanations are now computed, not asserted:
+
+    Proximity to origin     100.0  Closest approach ... was 0.0 km.
+    Timing overlap          100.0  Present for 24.0h of the 24.0h window.
+    Trajectory consistency   99.2  Course 43 deg differs from drift axis 45 by 2 deg.
+    Drift agreement          65.3  Track closed 3.1 km toward the origin.
+
+The maths is real this time. Integrated as canonical.
+
+**One interface mismatch, adapted on Agent A's side:** `scoring.py` indexes
+track points as dicts (`{"lon":..,"lat":..}`), but GeoJSON LineString - and so
+the dashboard payload - uses `[[lon, lat], ...]`. Passing a list raises
+`AttributeError: 'list' object has no attribute 'get'`, because `point.get(...)`
+runs before the `isinstance` check. `golden_case` normalises list->dict rather
+than editing Agent B's lane. **Worth fixing at source**, since anyone feeding
+the scorer straight from a payload will hit it; B's tests pass only because they
+feed dicts.
+
+`_score_candidate_local` is retained purely as a fallback if the import breaks.
+
+**State:** golden case rebuilds with the canonical scorer - 5 candidates,
+72.2-81.8, top TAIXIANG10-17 (81.8), 9 self-checks pass, schema valid.
+**Still open:** real ship tracks (RECONSTRUCTED), CMEMS forcing, cell 30.
