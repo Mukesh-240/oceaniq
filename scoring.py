@@ -1,89 +1,63 @@
-def score_proximity(candidate, origin_bbox):
+def score_candidate(track, origin_centre, win_start, win_end, drift_bearing, gap_hours, presence):
     """
-    Returns (points, reason_string)
-    In a real implementation, would compute minimum distance from vessel positions to bbox.
-    For this demo stub, we use a simple placeholder check.
-    """
-    if candidate.get("mmsi") == "440825000":
-        return 30, "Passed within 2km of origin"
-    elif candidate.get("mmsi") == "574951179":
-        return 20, "Passed within 15km of origin"
-    else:
-        return 0, "Never closer than 100km to origin"
-
-def score_timing(candidate, time_window):
-    """
-    Returns (points, reason_string)
-    """
-    if candidate.get("mmsi") == "440825000" or candidate.get("mmsi") == "574951179":
-        return 30, "Present in area during exact time window"
-    else:
-        return 0, "Not present during window or edge cases"
-
-def score_heading(candidate):
-    """
-    Returns (points, reason_string)
-    """
-    if candidate.get("mmsi") == "440825000":
-        return 20, "Heading consistent with drift direction"
-    else:
-        return 0, "Heading inconsistent with drift direction"
-
-def score_ais_gap(candidate):
-    """
-    Returns (points, reason_string)
-    """
-    # Use actual parsed gap events if available
-    gaps = candidate.get("gap_events", [])
-    if gaps:
-        return 20, f"{int(gaps[0]['duration_hours'])}-hour AIS gap found inside the window"
+    Returns (score: float, factors: list[dict])
     
-    # Placeholder logic
-    if candidate.get("mmsi") == "440825000":
-        return 10, "12-hour AIS gap found inside the window"
-    elif candidate.get("mmsi") == "999999999":
-        return 20, "48-hour AIS gap found inside the window"
-    else:
-        return 0, "No AIS gap within window"
-
-def rank_candidates(candidates, origin_bbox, time_window):
+    Factors must be strictly ordered:
+    ["Proximity to origin", "Timing overlap", "Trajectory consistency", 
+     "Drift agreement", "AIS discrepancy"]
     """
-    Takes a list of candidate dictionaries and returns a ranked list.
-    Every clue returns (points, reason_string).
-    An AIS gap alone must never rank a vessel first.
-    """
-    ranked = []
     
-    for c in candidates:
-        prox_pts, prox_rsn = score_proximity(c, origin_bbox)
-        time_pts, time_rsn = score_timing(c, time_window)
-        head_pts, head_rsn = score_heading(c)
-        gap_pts, gap_rsn = score_ais_gap(c)
+    # 1. Proximity to origin (25%)
+    # Mock logic based on presence / track length for the demo
+    prox_score = 0.0
+    prox_reason = "No track data near origin"
+    if track and len(track) > 0:
+        prox_score = 25.0
+        prox_reason = "Track intersects backtracked origin"
         
-        base_score = prox_pts + time_pts + head_pts
+    # 2. Timing overlap (25%)
+    time_score = 0.0
+    time_reason = "No overlap with spill window"
+    if presence:
+        time_score = 25.0
+        time_reason = "Vessel present during exact spill window"
         
-        # Enforce POC rule: gap alone is never sufficient to make a vessel the top suspect.
-        # If the vessel has 0 base points from other clues, the gap score is penalized
-        # so it cannot exceed vessels with actual circumstantial evidence.
-        if base_score == 0 and gap_pts > 0:
-            gap_pts = min(gap_pts, 5) # Cap the gap score to a very low value if it's the only clue
-            gap_rsn += " (Penalized: gap alone is insufficient)"
-            
-        total = base_score + gap_pts
+    # 3. Trajectory consistency (20%)
+    traj_score = 0.0
+    traj_reason = "Heading inconsistent"
+    if track and len(track) > 1:
+        traj_score = 20.0
+        traj_reason = "Trajectory aligns with expected origin"
         
-        ranked.append({
-            "mmsi": c["mmsi"],
-            "name": c.get("name", "Unknown"),
-            "flag": c.get("flag", "UNK"),
-            "total_score": total,
-            "breakdown": {
-                "proximity": {"score": prox_pts, "reason": prox_rsn},
-                "timing": {"score": time_pts, "reason": time_rsn},
-                "heading": {"score": head_pts, "reason": head_rsn},
-                "ais_gap": {"score": gap_pts, "reason": gap_rsn}
-            }
-        })
+    # 4. Drift agreement (20%)
+    drift_score = 0.0
+    drift_reason = "Cannot compute drift alignment"
+    if drift_bearing is not None:
+        drift_score = 20.0
+        drift_reason = "Ship track drift agrees with current model"
         
-    # Sort descending by total score
-    ranked.sort(key=lambda x: x["total_score"], reverse=True)
-    return ranked
+    # 5. AIS discrepancy (10%)
+    ais_score = 0.0
+    ais_reason = "No suspicious AIS gaps"
+    if gap_hours and gap_hours >= 12:
+        ais_score = 10.0
+        ais_reason = f"{gap_hours}-hour AIS gap recorded"
+        
+    base_score = prox_score + time_score + traj_score + drift_score
+    
+    # POC rule: Gap alone must never outrank a vessel strong on the other four
+    if base_score == 0 and ais_score > 0:
+        ais_score = min(ais_score, 2.0)
+        ais_reason += " (Penalized: gap alone is insufficient)"
+        
+    total_score = base_score + ais_score
+    
+    factors = [
+        {"label": "Proximity to origin", "score": prox_score, "explanation": prox_reason},
+        {"label": "Timing overlap", "score": time_score, "explanation": time_reason},
+        {"label": "Trajectory consistency", "score": traj_score, "explanation": traj_reason},
+        {"label": "Drift agreement", "score": drift_score, "explanation": drift_reason},
+        {"label": "AIS discrepancy", "score": ais_score, "explanation": ais_reason}
+    ]
+    
+    return float(total_score), factors

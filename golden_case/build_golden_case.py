@@ -57,6 +57,27 @@ GFW_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
           "(KHTML, like Gecko) Chrome/131.0 Safari/537.36")
 GFW_BASE = "https://gateway.api.globalfishingwatch.org"
 
+# SCORER CHOICE - deliberate, do not "tidy" back to the import.
+#
+# Agent B's scoring.py has the right shape (5 factors, correct labels/keys) but
+# the body is mock logic that never reads its own inputs:
+#     prox  = 25.0 if track           -> origin_centre never used, no distance
+#     time  = 25.0 if presence        -> window never compared, no overlap
+#     traj  = 20.0 if len(track) > 1  -> drift_bearing never used, no angle
+#     drift = 20.0 if bearing is not None  -> always true
+# So every vessel with a 2-point track scores 90 regardless of where it was,
+# when, or which way it was heading, and the explanation strings assert facts
+# ("Trajectory aligns with expected origin") that were never computed.
+#
+# Measured: a vessel far from the origin, on the wrong course, with zero
+# temporal overlap scored 100.0 and outranked an evidence-rich vessel at 90.0 -
+# exactly the "AIS gap alone convicts" behaviour the POC rejects. Its guard
+# (`if base_score == 0`) cannot fire whenever a track exists.
+#
+# The local implementation computes haversine distance, real bearing deltas and
+# real window overlap, so it is used until scoring.py computes anything.
+_SCORER = "golden_case local (computes real distances/bearings/overlap)"
+
 
 # --------------------------------------------------------------------------
 # lon/lat order - the bug this file is deliberately paranoid about
@@ -287,6 +308,7 @@ def _bearing(lon1, lat1, lon2, lat2):
 
 def score_candidate(track, origin, win_start, win_end, drift_bearing,
                     gap_hours, presence):
+    """Five factors, each computed from the inputs. See SCORER CHOICE above."""
     ocx, ocy = origin
     f = []
 
@@ -328,6 +350,7 @@ def score_candidate(track, origin, win_start, win_end, drift_bearing,
     total = sum(WEIGHTS[l] * s for l, s, _ in f)
     return round(total, 1), [{"label": l, "score": round(s, 1), "explanation": e}
                              for l, s, e in f]
+
 
 
 # --------------------------------------------------------------------------

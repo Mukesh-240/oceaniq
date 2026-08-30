@@ -16,43 +16,46 @@ st.warning("""
 * **Investigative leads, not a verdict** — this tool flags suspicious vessels, it does not prove guilt.
 """)
 
-def load_fixtures():
-    # Load all fixtures safely
-    data = {}
-    for fix in ["spill_seeds", "drift_origin", "expected_ranking"]:
-        path = f"fixtures/{fix}.json"
-        if os.path.exists(path):
-            with open(path, "r") as f:
-                data[fix] = json.load(f)
-        else:
-            data[fix] = [] if fix != "drift_origin" else {}
-    return data
+def load_payload():
+    path = "golden_case/expected_output.json"
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return json.load(f)
+    return []
 
-data = load_fixtures()
+def load_origin():
+    path = "fixtures/drift_origin.json"
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            return json.load(f)
+    return {}
+
+payload = load_payload()
+origin_data = load_origin()
+
+# B9: Provenance Banner
+is_stand_in = "particles" not in origin_data or "drift_hours" not in origin_data
+has_synthetic = not os.path.exists("fixtures/vessel_tracks.json")
+
+if is_stand_in or has_synthetic:
+    alerts = []
+    if is_stand_in:
+        alerts.append("ORIGIN: STAND-IN, not a drift run.")
+    if has_synthetic:
+        alerts.append("TRACKS: Synthetic/mocked paths used.")
+        
+    st.info("⚠️ **PROVENANCE NOTICE:** " + " | ".join(alerts))
 
 col1, col2 = st.columns([2, 1])
 
 with col1:
     st.subheader("Geospatial View")
     
-    # Initialize map in the Arabian Sea roughly
+    # Initialize map
     m = folium.Map(location=[18.5, 69.1], zoom_start=9)
     
-    # 1. Plot Spill Polygon (from spill_seeds)
-    if data["spill_seeds"]:
-        points = [(p["lat"], p["lon"]) for p in data["spill_seeds"]]
-        folium.Polygon(
-            locations=points,
-            color="red",
-            fill=True,
-            tooltip="Detected Spill Surface"
-        ).add_to(m)
-        
-    # 2. Plot Backtracked Origin
-    origin = data.get("drift_origin", {})
-    if origin and "origin_bbox" in origin:
-        bbox = origin["origin_bbox"]
-        # bbox is [minLon, minLat, maxLon, maxLat]
+    if origin_data and "origin_bbox" in origin_data:
+        bbox = origin_data["origin_bbox"]
         folium.Rectangle(
             bounds=[[bbox[1], bbox[0]], [bbox[3], bbox[2]]],
             color="blue",
@@ -60,24 +63,27 @@ with col1:
             tooltip="Estimated Backtracked Origin"
         ).add_to(m)
         
+    for suspect in payload:
+        track = suspect.get("track", [])
+        if track:
+            points = [(p["lat"], p["lon"]) for p in track]
+            folium.PolyLine(
+                locations=points,
+                color="orange",
+                weight=2,
+                tooltip=suspect.get("mmsi")
+            ).add_to(m)
+        
     st_folium(m, width=700, height=500)
 
 with col2:
     st.subheader("Ranked Suspects")
     
-    ranking = data.get("expected_ranking", [])
-    if not ranking:
-        st.info("No suspects found or fixtures missing.")
+    if not payload:
+        st.info("No payload found in golden_case/expected_output.json")
         
-    for idx, suspect in enumerate(ranking):
-        with st.expander(f"#{idx+1} {suspect['name']} (Score: {suspect['total_score']})"):
-            st.write(f"**MMSI:** {suspect['mmsi']}")
-            st.write(f"**Flag:** {suspect['flag']}")
-            
-            st.markdown("#### Evidence Breakdown")
-            bd = suspect.get("breakdown", {})
-            for clue, details in bd.items():
-                score = details.get("score", 0)
-                reason = details.get("reason", "N/A")
-                st.write(f"- **{clue.capitalize()}:** {score} pts — {reason}")
-
+    for idx, suspect in enumerate(payload):
+        total_score = sum(f.get("score", 0) for f in suspect.get("factors", []))
+        with st.expander(f"#{idx+1} MMSI: {suspect.get('mmsi')} (Score: {total_score})"):
+            for f in suspect.get("factors", []):
+                st.write(f"- **{f.get('label')}:** {f.get('score')} pts — {f.get('explanation', '')}")

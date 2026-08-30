@@ -70,13 +70,30 @@ def get_vessel_candidates(origin_bbox, time_window, events_data_path="fixtures/g
                         "duration_hours": duration_hours
                     })
         elif type_ == "fishing":
-            # Just store it as a position proxy for now
+            # Will be overridden by real tracks below if available
             if start_t:
                 candidates_map[mmsi]["positions"].append({
                     "lat": e.get("lat", (origin_bbox[1]+origin_bbox[3])/2),
                     "lon": e.get("lon", (origin_bbox[0]+origin_bbox[2])/2),
                     "time": start_t.isoformat()
                 })
+                
+    # B6: Load real ship tracks if available to replace synthetic/proxy paths
+    tracks_path = "fixtures/vessel_tracks.json"
+    if __import__("os").path.exists(tracks_path):
+        with open(tracks_path, "r") as f:
+            real_tracks = json.load(f)
+            
+        for c_mmsi, candidate in candidates_map.items():
+            if c_mmsi in real_tracks:
+                # Range check [lon, lat] before appending
+                valid_positions = []
+                for p in real_tracks[c_mmsi]:
+                    lat, lon = p.get("lat"), p.get("lon")
+                    if lat is not None and lon is not None:
+                        if -90 <= lat <= 90 and -180 <= lon <= 180:
+                            valid_positions.append(p)
+                candidate["positions"] = valid_positions
                 
     return list(candidates_map.values())
 
