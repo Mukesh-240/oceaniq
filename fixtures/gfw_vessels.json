@@ -1,0 +1,362 @@
+{
+  "metadata": {
+    "datasets": [
+      "public-global-fishing-events:v4.0"
+    ],
+    "dateRange": {
+      "from": "2024-01-01",
+      "to": "2024-12-31"
+    }
+  },
+  "limit": 5,
+  "offset": 0,
+  "nextOffset": 5,
+  "total": 13255554,
+  "entries": [
+    {
+      "start": "2023-12-19T16:35:05.000Z",
+      "end": "2024-01-02T10:44:44.000Z",
+      "id": "689314396fc6e8b15864f0f2dfc6ab99",
+      "type": "fishing",
+      "position": {
+        "lat": 34.667,
+        "lon": -6.8423
+      },
+      "regions": {
+        "mpa": [],
+        "eez": [
+          "8367"
+        ],
+        "rfmo": [
+          "ICCAT",
+          "NAMMCO",
+          "ACAP",
+          "IWC"
+        ],
+        "fao": [
+          "34.1.1",
+          "34.1.11",
+          "34.1",
+          "34"
+        ],
+        "majorFao": [
+          "34"
+        ],
+        "eez12Nm": [],
+        "highSeas": [],
+        "mpaNoTakePartial": [],
+        "mpaNoTake": []
+      },
+      "boundingBox": [
+        -7.201291666666667,
+        34.218333333333334,
+        -6.490693333333334,
+        35.17070666666667
+      ],
+      "distances": {
+        "startDistanceFromShoreKm": 37,
+        "endDistanceFromShoreKm": 26,
+        "startDistanceFromPortKm": 40.863781,
+        "endDistanceFromPortKm": 92.220695
+      },
+      "vessel": {
+        "id": "2934e7640-0d19-ad59-bcff-9dedb141149d",
+        "name": "TALA-15",
+        "ssvid": "242065100",
+        "flag": "MAR",
+        "type": "fishing",
+        "publicAuthorizations": [
+          {
+            "hasPubliclyListedAuthorization": "false",
+            "rfmo": "ICCAT"
+          }
+        ],
+        "nextPort": null
+      },
+      "fishing": {
+        "totalDistanceKm": 1874.9687137099975,
+        "averageSpeedKnots": 3.210861420279806,
+        "averageDurationHours": null,
+        "potentialRisk": false,
+        "vesselPublicAuthorizationStatus": "not_matching_relevant_public_authorization"
+      }
+    },
+    {
+      "start": "2023-12-23T20:40:32.000Z",
+      "end": "2024-01-01T00:02:27.000Z",
+      "id": "ac5433e1ed5d490f38e54580a1c58877",
+      "type": "fishing",
+      "position": {
+        "lat": 44.6694,
+        "lon": -57.4436
+      },
+      "regions": {
+        "mpa": [],
+        "eez": [
+          "8493"
+        ],
+        "rfmo": [
+          "NAMMCO",
+          "IWC",
+          "NASCO",
+          "NAFO",
+          "ACAP",
+          "ICCAT"
+        ],
+        "fao": [
+          "21.4",
+          "21",
+          "21.4.V",
+          "21.4.5.s"
+        ],
+        "majorFao": [
+          "21"
+        ],
+        "eez12Nm": [],
+        "highSeas": [],
+        "mpaNoTakePartial": [],
+        "mpaNoTake": []
+      },
+      "boundingBox": [
+        -57.39835500000001,
+        44.64847666666667,
+        -57.470371666666665,
+        44.6877
+      ],
+      "distances": {
+        "startDistanceFromShoreKm": 198,
+        "endDistanceFromShoreKm": 194,
+        "startDistanceFromPortKm": 245.679812,
+        "endDistanceFromPortKm": 238.587609
+      },
+      "vessel": {
+        "id": "026995043-38ee-18fa-8433-9b1be40ccc05",
+        "name": "ANNE RISLEY",
+        "ssvid": "316014440",
+        "flag": "CAN",
+        "type": "fishing",
+        "publicAuthorizations": [
+          {
+            "hasPubliclyListedAuthorization": "false",
+            "rfmo": "ICCAT"
+          }
+        ],
+        "nextPort": null
+      },
+      "fishing": {
+        "totalDistanceKm": 658.1399773715174,
+        "averageSpeedKnots": 2.7445214465703103,
+        "averageDurationHours": null,
+        "potentialRisk": false,
+        "vesselPublicAuthorizationStatus": "not_matching_relevant_public_authorization"
+      }
+    },
+    {
+      "start": "2023-12-24T21:05:08.000Z",
+      "end": "2024-01-01T13:54:05.000Z",
+      "id": "9f7c7f5cf9d0169d7a9354c0c435414d",
+      "type": "fishing",
+      "position": {
+        "lat": -60.4061,
+        "lon": -46.0382
+      },
+      "regions": {
+        "mpa": [],
+        "eez": [],
+        "rfmo": [
+          "CCAMLR",
+          "ACAP",
+          "IWC"
+        ],
+        "fao": [
+          "48",
+          "48.2"
+        ],
+        "majorFao": [
+          "48"
+        ],
+        "eez12Nm": [],
+        "highSeas": [
+          "63203"
+        ],
+        "mpaNoTakePartial": [],
+        "mpaNoTake": []
+      },
+      "boundingBox": [
+        -46.427521666666664,
+        -60.519855,
+        -45.75725833333333,
+        -60.20981666666667
+      ],
+      "distances": {
+        "startDistanceFromShoreKm": 13,
+        "endDistanceFromShoreKm": 33,
+        "startDistanceFromPortKm": 678.017438,
+        "endDistanceFromPortKm": 725.273
+      },
+      "vessel": {
+        "id": "43b59dcf9-9aaf-2af1-52be-d33c594501fe",
+        "name": "ANTARCTIC ENDURANCE",
+        "ssvid": "257400000",
+        "flag": "NOR",
+        "type": "fishing",
+        "publicAuthorizations": [
+          {
+            "hasPubliclyListedAuthorization": null,
+            "rfmo": null
+          }
+        ],
+        "nextPort": null
+      },
+      "fishing": {
+        "totalDistanceKm": 522.2839699337386,
+        "averageSpeedKnots": 1.5198166318281738,
+        "averageDurationHours": null,
+        "potentialRisk": false,
+        "vesselPublicAuthorizationStatus": "publicly_authorized"
+      }
+    },
+    {
+      "start": "2023-12-26T07:02:54.000Z",
+      "end": "2024-01-01T11:32:29.000Z",
+      "id": "f4c8b2d929b63f8a4d16d48d7af636d3",
+      "type": "fishing",
+      "position": {
+        "lat": 41.5872,
+        "lon": 32.0236
+      },
+      "regions": {
+        "mpa": [],
+        "eez": [
+          "5697"
+        ],
+        "rfmo": [
+          "GFCM",
+          "ACAP",
+          "ICCAT",
+          "IWC"
+        ],
+        "fao": [
+          "37.4",
+          "37",
+          "37.4.2"
+        ],
+        "majorFao": [
+          "37"
+        ],
+        "eez12Nm": [
+          "5697"
+        ],
+        "highSeas": [],
+        "mpaNoTakePartial": [],
+        "mpaNoTake": []
+      },
+      "boundingBox": [
+        32.052009999999996,
+        41.569655,
+        31.998116666666675,
+        41.604371666666665
+      ],
+      "distances": {
+        "startDistanceFromShoreKm": 0,
+        "endDistanceFromShoreKm": 3,
+        "startDistanceFromPortKm": 11.042628,
+        "endDistanceFromPortKm": 8.671539000000001
+      },
+      "vessel": {
+        "id": "1c01dc438-8a6f-79c1-da11-df6e6b19b8a3",
+        "name": "HABIBIN YAVUZ",
+        "ssvid": "271073375",
+        "flag": "TUR",
+        "type": "fishing",
+        "publicAuthorizations": [
+          {
+            "hasPubliclyListedAuthorization": "false",
+            "rfmo": "ICCAT"
+          }
+        ],
+        "nextPort": null
+      },
+      "fishing": {
+        "totalDistanceKm": 259.38280932618017,
+        "averageSpeedKnots": 0.9935296436310584,
+        "averageDurationHours": null,
+        "potentialRisk": false,
+        "vesselPublicAuthorizationStatus": "not_matching_relevant_public_authorization"
+      }
+    },
+    {
+      "start": "2023-12-26T19:20:35.000Z",
+      "end": "2024-01-04T12:02:24.000Z",
+      "id": "caf5e940fece5c93eaca162e0af00c64",
+      "type": "fishing",
+      "position": {
+        "lat": 50.753,
+        "lon": -1.1561
+      },
+      "regions": {
+        "mpa": [
+          "555703761",
+          "555787505"
+        ],
+        "eez": [
+          "5696"
+        ],
+        "rfmo": [
+          "ACAP",
+          "NAMMCO",
+          "ICCAT",
+          "IWC",
+          "ICES",
+          "NASCO",
+          "NEAFC"
+        ],
+        "fao": [
+          "27",
+          "27.7",
+          "27.7.d"
+        ],
+        "majorFao": [
+          "27"
+        ],
+        "eez12Nm": [],
+        "highSeas": [],
+        "mpaNoTakePartial": [],
+        "mpaNoTake": []
+      },
+      "boundingBox": [
+        -1.181235,
+        50.745443333333334,
+        -1.128225,
+        50.76083333333333
+      ],
+      "distances": {
+        "startDistanceFromShoreKm": 1,
+        "endDistanceFromShoreKm": 1,
+        "startDistanceFromPortKm": 3.0663159999999996,
+        "endDistanceFromPortKm": 0.703386
+      },
+      "vessel": {
+        "id": "993e15680-00c5-ac17-8e69-593072a53780",
+        "name": "G/V HAULBOWLINE",
+        "ssvid": "232021354",
+        "flag": "GBR",
+        "type": "fishing",
+        "publicAuthorizations": [
+          {
+            "hasPubliclyListedAuthorization": "false",
+            "rfmo": "ICCAT"
+          }
+        ],
+        "nextPort": null
+      },
+      "fishing": {
+        "totalDistanceKm": 603.3070082346586,
+        "averageSpeedKnots": 1.5938916244645693,
+        "averageDurationHours": null,
+        "potentialRisk": false,
+        "vesselPublicAuthorizationStatus": "not_matching_relevant_public_authorization"
+      }
+    }
+  ]
+}
