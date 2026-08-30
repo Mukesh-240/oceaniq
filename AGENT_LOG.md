@@ -490,3 +490,43 @@ narrative rather than leaving a hole in the pitch.
   duplicate scorer in `golden_case/build_golden_case.py`.
 - **A -> B:** B6's `fixtures/vessel_tracks.json` should key by MMSI string so I
   can join it straight onto candidates.
+
+---
+
+### 9. Full pillar 1->2 pipeline + transposition mode — VERIFIED
+**Agent:** Claude (Agent A)   **When:** 2026-08-30
+**Did:** Ran `pipeline_end_to_end.ipynb` to completion in Colab, then added a
+labelled transposition mode to resolve a hard conflict it exposed.
+**Evidence (Colab):**
+
+    Drive mounted (attempt 3)          <- auto-retry absorbed 2 failures
+    pixels after screening : 15776
+    seed points: 300
+    ran backward: True  (2015-11-18 18:00:00 -> 2015-11-18 06:00:00)
+    particles surviving to origin: 300/300
+    origin_bbox: [4.70677, 59.74447, 4.74974, 59.80856]
+
+Origin is now a real estimate: 0.043 x 0.064 deg (~2.4 x 7.1 km), against the
+5 x 5 deg (~550 km) stand-in it replaces.
+
+**THE CONFLICT:** a real origin carries a 2015 Norwegian window, and GFW holds
+no vessel data there/then - `gap events: 0 returned`. So a real drift origin and
+real vessel candidates were mutually exclusive.
+
+**Resolution — `DEMO_TRANSPOSE=1`:** keeps the real drift geometry (shape,
+spread, scale, all genuinely computed) and translates position + epoch to the
+Arabian Sea, 2024, where AIS data exists. Recorded in the payload's
+`provenance` block, never silent.
+
+    MODE A (untransposed): gap events 0 returned  -> fallback candidates
+    MODE B (transposed):   gap events 100 returned, 10 exceed 72h, 90 kept
+                           candidates 5, scores 72.2-81.8
+                           top suspect TAIXIANG10-17 (81.8)
+
+**Tests:** `python golden_case/test_geometry.py` - 9 checks pass, including
+transpose-preserves-size, validator rejecting 5 malformed payloads, and
+gap-only 29.8 losing to evidence-rich 82.9.
+
+**Caveats:** ship tracks still RECONSTRUCTED (B6 will fix). Transposition is a
+demo device - with CMEMS forcing for Indian waters it becomes unnecessary.
+**Next:** B6 real tracks; user starts CMEMS registration.

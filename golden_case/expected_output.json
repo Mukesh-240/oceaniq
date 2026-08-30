@@ -5,40 +5,40 @@
     "coordinates": [
       [
         [
-          4.73227,
-          59.78851
+          69.10401499999999,
+          18.531994999999995
         ],
         [
-          4.73067,
-          59.78991
+          69.102415,
+          18.53339499999999
         ],
         [
-          4.72802,
-          59.79266
+          69.09976499999999,
+          18.53614499999999
         ],
         [
-          4.72807,
-          59.79331
+          69.09981499999999,
+          18.53679499999999
         ],
         [
-          4.7285699999999995,
-          59.79311
+          69.100315,
+          18.53659499999999
         ],
         [
-          4.72947,
-          59.79271
+          69.101215,
+          18.536194999999992
         ],
         [
-          4.73107,
-          59.79111
+          69.10281499999999,
+          18.534594999999996
         ],
         [
-          4.73227,
-          59.79091
+          69.10401499999999,
+          18.53439499999999
         ],
         [
-          4.73227,
-          59.78851
+          69.10401499999999,
+          18.531994999999995
         ]
       ]
     ]
@@ -49,72 +49,72 @@
       "coordinates": [
         [
           [
-            4.70655515,
-            59.74414955
+            69.07830014999999,
+            18.487634549999996
           ],
           [
-            4.74995485,
-            59.74414955
+            69.12169984999998,
+            18.487634549999996
           ],
           [
-            4.74995485,
-            59.80888045
+            69.12169984999998,
+            18.55236544999999
           ],
           [
-            4.70655515,
-            59.80888045
+            69.07830014999999,
+            18.55236544999999
           ],
           [
-            4.70655515,
-            59.74414955
+            69.07830014999999,
+            18.487634549999996
           ]
         ]
       ]
     },
     "time_window": {
-      "start": "2015-11-18T06:00:00Z",
-      "end": "2015-11-18T18:00:00Z"
+      "start": "2024-06-15T00:00:00Z",
+      "end": "2024-06-15T12:00:00Z"
     }
   },
   "candidate_ships": [
     {
-      "id": "574888056",
-      "name": "FISHING",
+      "id": "890019017",
+      "name": "TAIXIANG10-17 62%",
       "track": {
         "type": "LineString",
         "coordinates": [
           [
-            4.67826,
-            59.73652
+            69.05,
+            18.48
           ],
           [
-            4.69825,
-            59.75252
+            69.07,
+            18.496
           ],
           [
-            4.71826,
-            59.76852
+            69.09,
+            18.512
           ],
           [
-            4.73825,
-            59.78452
+            69.11,
+            18.528
           ],
           [
-            4.75826,
-            59.80052
+            69.13,
+            18.544
           ],
           [
-            4.77825,
-            59.81652
+            69.15,
+            18.56
           ]
         ]
       },
-      "score": 78.9,
+      "score": 81.8,
       "factors": [
         {
           "label": "Proximity to origin",
-          "score": 97.9,
-          "explanation": "Closest approach to the reconstructed origin was 1.1 km."
+          "score": 97.2,
+          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
         },
         {
           "label": "Timing overlap",
@@ -123,8 +123,8 @@
         },
         {
           "label": "Trajectory consistency",
-          "score": 97.0,
-          "explanation": "Course 32 deg differs from the drift axis 27 deg by 5 deg."
+          "score": 96.5,
+          "explanation": "Course 50 deg differs from the drift axis 43 deg by 6 deg."
         },
         {
           "label": "Drift agreement",
@@ -133,49 +133,49 @@
         },
         {
           "label": "AIS discrepancy",
-          "score": 0.0,
-          "explanation": "No AIS gap detected inside the window."
+          "score": 32.2,
+          "explanation": "AIS silent for 23.2h inside the window - one clue among five, not proof."
         }
       ]
     },
     {
-      "id": "574140629",
-      "name": "FISHING",
+      "id": "994230150",
+      "name": "994230150         9V",
       "track": {
         "type": "LineString",
         "coordinates": [
           [
-            4.67826,
-            59.73652
+            69.05,
+            18.48
           ],
           [
-            4.69825,
-            59.75252
+            69.07,
+            18.496
           ],
           [
-            4.71826,
-            59.76852
+            69.09,
+            18.512
           ],
           [
-            4.73825,
-            59.78452
+            69.11,
+            18.528
           ],
           [
-            4.75826,
-            59.80052
+            69.13,
+            18.544
           ],
           [
-            4.77825,
-            59.81652
+            69.15,
+            18.56
           ]
         ]
       },
-      "score": 78.9,
+      "score": 80.6,
       "factors": [
         {
           "label": "Proximity to origin",
-          "score": 97.9,
-          "explanation": "Closest approach to the reconstructed origin was 1.1 km."
+          "score": 97.2,
+          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
         },
         {
           "label": "Timing overlap",
@@ -184,8 +184,8 @@
         },
         {
           "label": "Trajectory consistency",
-          "score": 97.0,
-          "explanation": "Course 32 deg differs from the drift axis 27 deg by 5 deg."
+          "score": 96.5,
+          "explanation": "Course 50 deg differs from the drift axis 43 deg by 6 deg."
         },
         {
           "label": "Drift agreement",
@@ -194,49 +194,49 @@
         },
         {
           "label": "AIS discrepancy",
-          "score": 0.0,
-          "explanation": "No AIS gap detected inside the window."
+          "score": 19.6,
+          "explanation": "AIS silent for 14.1h inside the window - one clue among five, not proof."
         }
       ]
     },
     {
-      "id": "574150442",
-      "name": "FISHING",
+      "id": "591060679",
+      "name": "PINGTAIRONG319-5 72%",
       "track": {
         "type": "LineString",
         "coordinates": [
           [
-            4.67826,
-            59.73652
+            69.05,
+            18.48
           ],
           [
-            4.69825,
-            59.75252
+            69.07,
+            18.496
           ],
           [
-            4.71826,
-            59.76852
+            69.09,
+            18.512
           ],
           [
-            4.73825,
-            59.78452
+            69.11,
+            18.528
           ],
           [
-            4.75826,
-            59.80052
+            69.13,
+            18.544
           ],
           [
-            4.77825,
-            59.81652
+            69.15,
+            18.56
           ]
         ]
       },
-      "score": 74.7,
+      "score": 77.3,
       "factors": [
         {
           "label": "Proximity to origin",
-          "score": 97.9,
-          "explanation": "Closest approach to the reconstructed origin was 1.1 km."
+          "score": 97.2,
+          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
         },
         {
           "label": "Timing overlap",
@@ -245,8 +245,8 @@
         },
         {
           "label": "Trajectory consistency",
-          "score": 97.0,
-          "explanation": "Course 32 deg differs from the drift axis 27 deg by 5 deg."
+          "score": 96.5,
+          "explanation": "Course 50 deg differs from the drift axis 43 deg by 6 deg."
         },
         {
           "label": "Drift agreement",
@@ -255,110 +255,49 @@
         },
         {
           "label": "AIS discrepancy",
-          "score": 0.0,
-          "explanation": "No AIS gap detected inside the window."
+          "score": 29.1,
+          "explanation": "AIS silent for 21.0h inside the window - one clue among five, not proof."
         }
       ]
     },
     {
-      "id": "422005208",
-      "name": "FISHING",
+      "id": "941220256",
+      "name": "0256",
       "track": {
         "type": "LineString",
         "coordinates": [
           [
-            4.67826,
-            59.73652
+            69.05,
+            18.48
           ],
           [
-            4.69825,
-            59.75252
+            69.07,
+            18.496
           ],
           [
-            4.71826,
-            59.76852
+            69.09,
+            18.512
           ],
           [
-            4.73825,
-            59.78452
+            69.11,
+            18.528
           ],
           [
-            4.75826,
-            59.80052
+            69.13,
+            18.544
           ],
           [
-            4.77825,
-            59.81652
+            69.15,
+            18.56
           ]
         ]
       },
-      "score": 70.5,
+      "score": 75.7,
       "factors": [
         {
           "label": "Proximity to origin",
-          "score": 97.9,
-          "explanation": "Closest approach to the reconstructed origin was 1.1 km."
-        },
-        {
-          "label": "Timing overlap",
-          "score": 66.7,
-          "explanation": "Present for 8.0h of the 12.0h estimated discharge window."
-        },
-        {
-          "label": "Trajectory consistency",
-          "score": 97.0,
-          "explanation": "Course 32 deg differs from the drift axis 27 deg by 5 deg."
-        },
-        {
-          "label": "Drift agreement",
-          "score": 50.0,
-          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
-        },
-        {
-          "label": "AIS discrepancy",
-          "score": 0.0,
-          "explanation": "No AIS gap detected inside the window."
-        }
-      ]
-    },
-    {
-      "id": "574604713",
-      "name": "FISHING",
-      "track": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            4.67826,
-            59.73652
-          ],
-          [
-            4.69825,
-            59.75252
-          ],
-          [
-            4.71826,
-            59.76852
-          ],
-          [
-            4.73825,
-            59.78452
-          ],
-          [
-            4.75826,
-            59.80052
-          ],
-          [
-            4.77825,
-            59.81652
-          ]
-        ]
-      },
-      "score": 66.4,
-      "factors": [
-        {
-          "label": "Proximity to origin",
-          "score": 97.9,
-          "explanation": "Closest approach to the reconstructed origin was 1.1 km."
+          "score": 97.2,
+          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
         },
         {
           "label": "Timing overlap",
@@ -367,8 +306,8 @@
         },
         {
           "label": "Trajectory consistency",
-          "score": 97.0,
-          "explanation": "Course 32 deg differs from the drift axis 27 deg by 5 deg."
+          "score": 96.5,
+          "explanation": "Course 50 deg differs from the drift axis 43 deg by 6 deg."
         },
         {
           "label": "Drift agreement",
@@ -377,10 +316,86 @@
         },
         {
           "label": "AIS discrepancy",
-          "score": 0.0,
-          "explanation": "No AIS gap detected inside the window."
+          "score": 95.8,
+          "explanation": "AIS silent for 68.9h inside the window - one clue among five, not proof."
+        }
+      ]
+    },
+    {
+      "id": "591072179",
+      "name": "PINGTAIRONG68-5100%",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            69.05,
+            18.48
+          ],
+          [
+            69.07,
+            18.496
+          ],
+          [
+            69.09,
+            18.512
+          ],
+          [
+            69.11,
+            18.528
+          ],
+          [
+            69.13,
+            18.544
+          ],
+          [
+            69.15,
+            18.56
+          ]
+        ]
+      },
+      "score": 72.2,
+      "factors": [
+        {
+          "label": "Proximity to origin",
+          "score": 97.2,
+          "explanation": "Closest approach to the reconstructed origin was 1.4 km."
+        },
+        {
+          "label": "Timing overlap",
+          "score": 66.7,
+          "explanation": "Present for 8.0h of the 12.0h estimated discharge window."
+        },
+        {
+          "label": "Trajectory consistency",
+          "score": 96.5,
+          "explanation": "Course 50 deg differs from the drift axis 43 deg by 6 deg."
+        },
+        {
+          "label": "Drift agreement",
+          "score": 50.0,
+          "explanation": "Track closed 0.0 km toward the origin, consistent with the reconstructed drift."
+        },
+        {
+          "label": "AIS discrepancy",
+          "score": 19.5,
+          "explanation": "AIS silent for 14.0h inside the window - one clue among five, not proof."
         }
       ]
     }
-  ]
+  ],
+  "provenance": {
+    "scenario": "CONTROLLED VALIDATION - not live oceanography",
+    "origin": "real OpenDrift backward run",
+    "drift_forcing": "OpenDrift bundled NorKyst sample (western Norway, Nov 2015)",
+    "georeferencing": "Path B - assumed anchor and pixel size, no geotransform",
+    "vessel_tracks": "RECONSTRUCTED - GFW tracks endpoint not wired yet",
+    "vessel_identities": "REAL - live GFW query",
+    "transposition": {
+      "applied": true,
+      "delta_lon": 64.37174,
+      "delta_lat": -41.25652,
+      "epoch_shift_to": "2024-06-15T12:00:00Z",
+      "reason": "GFW holds no vessel data for the NorKyst sample domain in 2015; drift shape and scale are real, map position and epoch are moved."
+    }
+  }
 }

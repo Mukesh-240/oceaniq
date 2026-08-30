@@ -136,6 +136,29 @@ def mask_to_polygon(mask: np.ndarray, transform, simplify_px: float = 0.75) -> d
     return {"type": "Polygon", "coordinates": [coords]}
 
 
+def transpose_geometry(geom: dict, dlon: float, dlat: float) -> dict:
+    """Translate a geometry by a fixed offset, preserving shape and size.
+
+    Why this exists: the only forcing data available is OpenDrift's NorKyst
+    sample (western Norway, Nov 2015). A real backward run therefore lands in
+    Norwegian water with a 2015 timestamp - and GFW returns ZERO vessels for
+    that time and place. So a real origin and real vessel candidates are
+    mutually exclusive until CMEMS forcing for Indian waters arrives.
+
+    Translation is the honest compromise: the drift *physics*, the spread, the
+    shape and the scale are all genuinely computed; only the map position and
+    epoch are moved so live AIS data exists. It is recorded in the payload's
+    `provenance` block - never silent.
+    """
+    out = json.loads(json.dumps(geom))          # deep copy
+    rings = out["coordinates"] if out["type"] == "Polygon" else [out["coordinates"]]
+    for ring in rings:
+        for pair in ring:
+            pair[0] += dlon
+            pair[1] += dlat
+    return out
+
+
 def hull_polygon(lons, lats, pad: float = 0.01) -> dict:
     from scipy.spatial import ConvexHull
     pts = np.column_stack([np.asarray(lons, float), np.asarray(lats, float)])
@@ -397,6 +420,32 @@ def main() -> int:
     ocx, ocy = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
     print(f"[4] origin polygon centre ({ocx:.4f}, {ocy:.4f})")
 
+    # ---- optional transposition to a region/epoch where AIS data exists -----
+    # DEMO_TRANSPOSE=1 keeps the real drift geometry (shape, spread, scale) and
+    # moves it to the Arabian Sea at a modern date, because GFW holds no vessel
+    # data for Norway in 2015. Recorded in provenance, never silent.
+    transposed = None
+    if os.environ.get("DEMO_TRANSPOSE") == "1":
+        tgt_lon, tgt_lat = 69.10, 18.52
+        tgt_end = datetime(2024, 6, 15, 12, 0, tzinfo=timezone.utc)
+        dlon, dlat = tgt_lon - ocx, tgt_lat - ocy
+        dur = win_end - win_start
+        spill = transpose_geometry(spill, dlon, dlat)
+        origin_poly = transpose_geometry(origin_poly, dlon, dlat)
+        assert_lonlat(spill, "spill_mask (transposed)")
+        assert_lonlat(origin_poly, "origin_region.polygon (transposed)")
+        win_start, win_end = tgt_end - dur, tgt_end
+        ocx, ocy = tgt_lon, tgt_lat
+        transposed = {"applied": True,
+                      "delta_lon": round(dlon, 5), "delta_lat": round(dlat, 5),
+                      "epoch_shift_to": _iso(tgt_end),
+                      "reason": "GFW holds no vessel data for the NorKyst sample "
+                                "domain in 2015; drift shape and scale are real, "
+                                "map position and epoch are moved."}
+        print(f"[4b] TRANSPOSED by ({dlon:+.3f}, {dlat:+.3f}) deg to "
+              f"({tgt_lon}, {tgt_lat}); window -> {_iso(win_start)}..{_iso(win_end)}")
+        print("     drift shape/scale preserved; position and epoch moved.")
+
     print("\n[5] GFW (live API)")
     gaps = fetch_gaps(win_start, win_end)
     vessels = fetch_vessels("FISHING", limit=10)
@@ -446,6 +495,15 @@ def main() -> int:
         "origin_region": {"polygon": origin_poly,
                           "time_window": {"start": _iso(win_start), "end": _iso(win_end)}},
         "candidate_ships": ships,
+        "provenance": {
+            "scenario": "CONTROLLED VALIDATION - not live oceanography",
+            "origin": provenance,
+            "drift_forcing": "OpenDrift bundled NorKyst sample (western Norway, Nov 2015)",
+            "georeferencing": "Path B - assumed anchor and pixel size, no geotransform",
+            "vessel_tracks": "RECONSTRUCTED - GFW tracks endpoint not wired yet",
+            "vessel_identities": "REAL - live GFW query",
+            "transposition": transposed or {"applied": False},
+        },
     }
     validate(doc)
     OUT_DIR.mkdir(exist_ok=True)
