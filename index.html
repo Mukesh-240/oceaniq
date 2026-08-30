@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>OceanIQ — Reconstruct Incident</title>
 
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2212%22 fill=%22none%22 stroke=%22%230A1F33%22 stroke-width=%222%22/%3E%3Cpath d=%22M16 6 19 16 16 26 13 16Z%22 fill=%22%231FB8A6%22/%3E%3C/svg%3E" />
 <link rel="stylesheet" href="lib/leaflet.css" />
 <link rel="stylesheet" href="lib/fonts.css" />
 <script src="lib/tailwind.js"></script>
@@ -861,8 +862,11 @@ async function run(){
   btn.disabled = true;
   $('#btnLabel').textContent = 'RECONSTRUCTING';
 
+  // Not awaited, so it needs its own catch: teardown() cancels this animation
+  // and a rejected orphan promise surfaces as an uncaught error in the console.
   animate($('#veil'), { opacity:[1,0] }, { duration:.36 })
-    .then(() => $('#veil').classList.add('hidden'));
+    .then(() => $('#veil').classList.add('hidden'))
+    .catch(() => $('#veil').classList.add('hidden'));
 
   try{
     await wait(180);        guard(token);
