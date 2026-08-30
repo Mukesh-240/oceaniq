@@ -1,0 +1,177 @@
+{
+  "satellite_image_url": "assets/sar-scene.svg",
+
+  "incident": {
+    "case_id": "OCIQ-2026-0417-ARB",
+    "basin": "Gulf of Kutch approaches, Arabian Sea",
+    "detected_at": "2026-04-17T05:42:00Z",
+    "area_km2": 11.4,
+    "confidence": 0.87,
+    "chart_datum": "WGS 84",
+    "survey_note": "Slick extent digitised from a single VV-polarised acquisition. Extent is a lower bound; thin sheen beyond the delineated edge is below the detection floor."
+  },
+
+  "scene": {
+    "id": "OCIQ-2026-0417-ARB",
+    "sensor": "Sentinel-1B IW / VV",
+    "acquired": "2026-04-17T05:42:00Z",
+    "bounds": [[20.18, 71.55], [20.74, 72.32]],
+    "center": [20.46, 71.94],
+    "zoom": 11
+  },
+
+  "spill_mask": {
+    "type": "Polygon",
+    "coordinates": [[
+      [71.9720, 20.5210],
+      [71.9430, 20.5080],
+      [71.9160, 20.4880],
+      [71.8940, 20.4620],
+      [71.8790, 20.4330],
+      [71.8730, 20.4030],
+      [71.8850, 20.3810],
+      [71.9080, 20.3760],
+      [71.9260, 20.3910],
+      [71.9380, 20.4160],
+      [71.9520, 20.4400],
+      [71.9740, 20.4600],
+      [71.9980, 20.4740],
+      [72.0210, 20.4880],
+      [72.0350, 20.5060],
+      [72.0300, 20.5230],
+      [72.0090, 20.5300],
+      [71.9720, 20.5210]
+    ]]
+  },
+
+  "origin_region": {
+    "polygon": {
+      "type": "Polygon",
+      "coordinates": [[
+        [71.8460, 20.3560],
+        [71.9120, 20.3620],
+        [71.9340, 20.3350],
+        [71.9180, 20.3000],
+        [71.8640, 20.2880],
+        [71.8210, 20.3080],
+        [71.8180, 20.3400],
+        [71.8460, 20.3560]
+      ]]
+    },
+    "time_window": { "start": "2026-04-16T18:20:00Z", "end": "2026-04-17T01:05:00Z" },
+    "method": "Reverse Lagrangian advection, 500-member ensemble, HYCOM surface currents with 3% wind drift"
+  },
+
+  "candidate_ships": [
+    {
+      "id": "IMO9483721",
+      "name": "MV Kestrel Horizon",
+      "flag": "Panama",
+      "type": "Crude Oil Tanker",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [71.6120, 20.2140], [71.6680, 20.2380], [71.7240, 20.2610], [71.7810, 20.2830],
+          [71.8290, 20.3020], [71.8680, 20.3190], [71.8960, 20.3340], [71.9210, 20.3480],
+          [71.9560, 20.3660], [72.0040, 20.3910], [72.0620, 20.4180], [72.1240, 20.4460]
+        ]
+      },
+      "score": 86,
+      "factors": [
+        { "label": "Proximity to origin",      "score": 23, "max": 25, "explanation": "Passed within 380 m of the ensemble's modal release point. No other candidate came closer than 1.9 km." },
+        { "label": "Temporal compatibility",   "score": 22, "max": 25, "explanation": "Inside the origin polygon at 21:48 UTC, near the centre of the 6h 45m release window, making way at 4.1 kn — the slowest transit recorded in the box." },
+        { "label": "Trajectory compatibility", "score": 18, "max": 20, "explanation": "Course over ground sits 6 degrees off the slick's major axis, the tightest angular agreement in the candidate set." },
+        { "label": "Drift consistency",        "score": 16, "max": 20, "explanation": "Reverse advection under HYCOM currents and an 8 m/s north-easterly reconstructs a release path that tracks this vessel's line for 14 km before diverging." },
+        { "label": "AIS/SAR discrepancy",      "score": 7,  "max": 10, "explanation": "A 74-minute AIS blackout opens at 20:31 UTC and closes at 21:45 UTC, immediately before the modelled release. No equipment fault was reported to port state control." }
+      ]
+    },
+    {
+      "id": "IMO9271004",
+      "name": "Sagar Vidya",
+      "flag": "India",
+      "type": "Product Tanker",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [71.7040, 20.5920], [71.7480, 20.5560], [71.7910, 20.5140], [71.8260, 20.4680],
+          [71.8520, 20.4210], [71.8730, 20.3760], [71.8910, 20.3320], [71.9160, 20.2900],
+          [71.9520, 20.2520], [72.0010, 20.2200], [72.0560, 20.1960]
+        ]
+      },
+      "score": 62,
+      "factors": [
+        { "label": "Proximity to origin",      "score": 18, "max": 25, "explanation": "Crossed the eastern lobe of the origin polygon, but stayed 3.2 km off the modal release point throughout." },
+        { "label": "Temporal compatibility",   "score": 17, "max": 25, "explanation": "In the box at 23:36 UTC, inside the window but in its final third, where ensemble density has already fallen by half." },
+        { "label": "Trajectory compatibility", "score": 13, "max": 20, "explanation": "Heading differs from the slick's major axis by 34 degrees. Plausible under the observed wind shear, but not corroborating." },
+        { "label": "Drift consistency",        "score": 11, "max": 20, "explanation": "Intersects the backtracked cloud only across its 15th to 85th percentile spread; the median solution misses this track by 2.6 km." },
+        { "label": "AIS/SAR discrepancy",      "score": 3,  "max": 10, "explanation": "Continuous AIS at a 3-minute cadence across the whole window, with no course or speed anomaly and no gap to explain." }
+      ]
+    },
+    {
+      "id": "IMO9615338",
+      "name": "Orion Meridian",
+      "flag": "Liberia",
+      "type": "Bulk Carrier",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [72.2600, 20.2020], [72.2010, 20.2380], [72.1420, 20.2740], [72.0830, 20.3080],
+          [72.0240, 20.3380], [71.9680, 20.3620], [71.9140, 20.3800], [71.8580, 20.3940],
+          [71.7960, 20.4060], [71.7300, 20.4180]
+        ]
+      },
+      "score": 48,
+      "factors": [
+        { "label": "Proximity to origin",      "score": 14, "max": 25, "explanation": "Clipped the northern edge of the polygon only, never entering the high-density core of the ensemble." },
+        { "label": "Temporal compatibility",   "score": 12, "max": 25, "explanation": "Arrived 00:12 UTC, roughly 55 minutes after the modelled release had most likely occurred." },
+        { "label": "Trajectory compatibility", "score": 11, "max": 20, "explanation": "Runs close to anti-parallel with the slick axis — geometrically consistent, but equally consistent with an unrelated transit." },
+        { "label": "Drift consistency",        "score": 9,  "max": 20, "explanation": "Backtracked particles reach this line only in the tail of the ensemble, and only under the strongest wind-drift members." },
+        { "label": "AIS/SAR discrepancy",      "score": 2,  "max": 10, "explanation": "Two reporting gaps of 9 and 12 minutes, both within normal dropout for this receiver footprint." }
+      ]
+    },
+    {
+      "id": "IMO9702241",
+      "name": "Nordic Petrel",
+      "flag": "Marshall Islands",
+      "type": "Chemical Tanker",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [71.5900, 20.4600], [71.6420, 20.4380], [71.6960, 20.4160], [71.7520, 20.3980],
+          [71.8080, 20.3860], [71.8620, 20.3820], [71.9180, 20.3880], [71.9720, 20.4020],
+          [72.0280, 20.4220], [72.0880, 20.4460], [72.1500, 20.4700]
+        ]
+      },
+      "score": 37,
+      "factors": [
+        { "label": "Proximity to origin",      "score": 11, "max": 25, "explanation": "Nearest approach 1.9 km north of the polygon boundary; never inside it." },
+        { "label": "Temporal compatibility",   "score": 9,  "max": 25, "explanation": "Cleared the area at 19:04 UTC, in the opening hour of the window and well before the ensemble's modal release time." },
+        { "label": "Trajectory compatibility", "score": 8,  "max": 20, "explanation": "Course sits 71 degrees off the slick's major axis. The geometry does not support a discharge along this line." },
+        { "label": "Drift consistency",        "score": 7,  "max": 20, "explanation": "Fewer than 12% of ensemble members reach this track, and the post-correction residual stays above 3 km throughout." },
+        { "label": "AIS/SAR discrepancy",      "score": 2,  "max": 10, "explanation": "One 28-minute gap at 19:20 UTC, but the vessel had already left the region before the modelled release opened." }
+      ]
+    },
+    {
+      "id": "IMO9338117",
+      "name": "Coastal Trident",
+      "flag": "Singapore",
+      "type": "Offshore Supply Vessel",
+      "track": {
+        "type": "LineString",
+        "coordinates": [
+          [71.9800, 20.6400], [71.9520, 20.6020], [71.9260, 20.5640], [71.9080, 20.5240],
+          [71.9020, 20.4860], [71.9120, 20.4500], [71.9360, 20.4220], [71.9700, 20.4040],
+          [72.0100, 20.3960]
+        ]
+      },
+      "score": 20,
+      "factors": [
+        { "label": "Proximity to origin",      "score": 6, "max": 25, "explanation": "Closest approach 6.8 km, the furthest of any candidate carried forward." },
+        { "label": "Temporal compatibility",   "score": 4, "max": 25, "explanation": "On scene 4h 10m after the window had closed. Retained only because it crossed the slick itself." },
+        { "label": "Trajectory compatibility", "score": 5, "max": 20, "explanation": "Cut across the slick after formation, which explains a faint linear disturbance in the scene without implying a source." },
+        { "label": "Drift consistency",        "score": 4, "max": 20, "explanation": "Sits downstream of the reconstructed release, not upstream. No ensemble member connects it to the origin." },
+        { "label": "AIS/SAR discrepancy",      "score": 1, "max": 10, "explanation": "Uninterrupted AIS at a 2-minute cadence, corroborated by both terrestrial and satellite receivers." }
+      ]
+    }
+  ]
+}

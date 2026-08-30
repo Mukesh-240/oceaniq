@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OceanIQ — Reconstruct Incident</title>
+
+<link rel="stylesheet" href="lib/leaflet.css" />
+<link rel="stylesheet" href="lib/fonts.css" />
+<script src="lib/tailwind.js"></script>
+<script src="lib/leaflet.js"></script>
+<script src="lib/anime.min.js"></script>
+<script src="lib/motion.js"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          paper:  '#F6F4EE',
+          vellum: '#EDE9DE',
+          ink:    '#0A1F33',
+          teal:   '#1FB8A6',
+          amber:  '#E8983A',
+          slate:  '#5C6B78'
+        },
+        fontFamily: {
+          display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+          sans:    ['IBM Plex Sans', 'system-ui', 'sans-serif'],
+          mono:    ['IBM Plex Mono', 'ui-monospace', 'monospace']
+        }
+      }
+    }
+  };
+</script>
+
+<style>
+  :root{
+    --paper:#F6F4EE; --vellum:#EDE9DE; --ink:#0A1F33; --teal:#1FB8A6;
+    --amber:#E8983A; --slate:#5C6B78; --rule:#C9C3B4; --rule-soft:#DCD7C9;
+    --teal-ink:#0E7A6E; --amber-ink:#9A5B12;
+  }
+
+  html,body{height:100%}
+  body{background:var(--paper);color:var(--ink);overflow:hidden;
+       font-family:'IBM Plex Sans',system-ui,sans-serif;
+       -webkit-font-smoothing:antialiased;
+       font-variant-numeric:tabular-nums}
+
+  /* ── browser surfaces: these ship with the design, not the browser ── */
+  ::selection{background:rgba(31,184,166,.28);color:var(--ink)}
+  *{caret-color:var(--teal)}
+  :focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:1px}
+  .thin{scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
+  .thin::-webkit-scrollbar{width:9px;height:9px}
+  .thin::-webkit-scrollbar-thumb{background:var(--rule);border:3px solid var(--paper)}
+  .thin::-webkit-scrollbar-thumb:hover{background:var(--slate)}
+  .thin::-webkit-scrollbar-track{background:transparent}
+
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+  /* ── the chart border: double rule with a minute-tick band ── */
+  .chart-frame{
+    position:relative;padding:11px;border:1px solid var(--ink);background:var(--paper);
+    background-image:
+      repeating-linear-gradient(90deg,var(--ink) 0 1px,transparent 1px 13px),
+      repeating-linear-gradient(90deg,var(--ink) 0 1px,transparent 1px 13px),
+      repeating-linear-gradient(0deg,var(--ink) 0 1px,transparent 1px 13px),
+      repeating-linear-gradient(0deg,var(--ink) 0 1px,transparent 1px 13px);
+    background-size:100% 11px,100% 11px,11px 100%,11px 100%;
+    background-position:top left,bottom left,top left,top right;
+    background-repeat:no-repeat;
+  }
+  .chart-frame::after{
+    content:'';position:absolute;inset:11px;border:1px solid var(--ink);
+    pointer-events:none;z-index:600;
+  }
+
+  /* ── map ── */
+  #map{position:absolute;inset:11px;background:var(--vellum)}
+  .leaflet-container{background:var(--vellum);font-family:'IBM Plex Mono',monospace}
+  /* warm the achromatic basemap into the chart's own paper */
+  .leaflet-tile-pane{filter:sepia(.30) saturate(.55) brightness(1.08) contrast(.95)}
+
+  .leaflet-control-attribution{
+    background:rgba(246,244,238,.9)!important;color:var(--slate)!important;
+    font:400 9px/1.4 'IBM Plex Mono',monospace!important;
+    border:1px solid var(--rule-soft);border-right:0;border-bottom:0;padding:2px 6px!important
+  }
+  .leaflet-control-attribution a{color:var(--slate)!important;text-decoration:underline;text-underline-offset:2px}
+  .leaflet-control-zoom{border:1px solid var(--ink)!important;box-shadow:none!important}
+  .leaflet-control-zoom a{
+    background:var(--paper)!important;color:var(--ink)!important;
+    border-bottom:1px solid var(--rule)!important;width:26px!important;height:26px!important;
+    line-height:26px!important;font-size:15px!important
+  }
+  .leaflet-control-zoom a:last-child{border-bottom:0!important}
+  .leaflet-control-zoom a:hover{background:var(--vellum)!important}
+  .leaflet-control-scale-line{
+    background:rgba(246,244,238,.9)!important;border:1px solid var(--ink)!important;border-top:0!important;
+    color:var(--ink)!important;font:500 9px/1.5 'IBM Plex Mono',monospace!important;
+    letter-spacing:.05em;padding:1px 5px!important;border-radius:0!important
+  }
+
+  .scene-plate{opacity:0}
+
+  /* ── vector states ── */
+  .oq-path{pointer-events:stroke}
+  .oq-track{transition:opacity .16s ease}
+  .oq-track.dim{opacity:.2}
+  .oq-track.hot{filter:drop-shadow(0 0 3px currentColor)}
+
+  /* ── chart-style position marker ── */
+  .oq-fix{background:none;border:0}
+  .oq-fix i{
+    display:flex;align-items:center;justify-content:center;
+    width:19px;height:19px;border-radius:50%;
+    border:1.5px solid var(--ink);background:var(--paper);
+    font:600 10px/1 'IBM Plex Mono',monospace;color:var(--ink);
+    font-style:normal;
+    transition:transform .16s ease;
+  }
+  .oq-fix.is-hot i{transform:scale(1.28)}
+
+  .oq-tip{
+    background:var(--paper);border:1px solid var(--ink);border-radius:0;
+    color:var(--ink);
+    font:500 10.5px/1.3 'IBM Plex Mono',monospace;letter-spacing:.03em;padding:3px 6px
+  }
+  .oq-tip::before{display:none}
+
+  /* ── the time-window callout, set as a chart note ── */
+  .oq-note{background:none;border:0}
+  .oq-note div{
+    background:var(--paper);border:1px solid var(--amber);
+    
+    padding:5px 8px;width:max-content;max-width:230px;opacity:0;
+    font:500 10.5px/1.45 'IBM Plex Mono',monospace;color:var(--ink)
+  }
+  .oq-note b{display:block;font-weight:600;font-size:9.5px;letter-spacing:.13em;color:var(--amber-ink)}
+
+  /* ── ruled measure: every score reads against a graduated scale ── */
+  .measure{position:relative;height:7px;background:var(--vellum);border:1px solid var(--rule)}
+  .measure::after{
+    content:'';position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(90deg,transparent 0 calc(10% - 1px),rgba(10,31,51,.22) calc(10% - 1px) 10%)
+  }
+  .measure i{display:block;height:100%;width:0}
+
+  .hair{height:1px;background:var(--rule-soft)}
+
+  /* ── draggable splitters: the map is the working surface, so it can take the room ── */
+  .splitter{
+    flex:0 0 7px;position:relative;cursor:col-resize;touch-action:none;
+    background:transparent;border:0;padding:0;align-self:stretch
+  }
+  .splitter::after{
+    content:'';position:absolute;top:0;bottom:0;left:2px;right:2px;
+    background:var(--rule);transition:background .14s ease
+  }
+  .splitter::before{
+    content:'';position:absolute;top:50%;left:0;right:0;height:26px;margin-top:-13px;
+    background:var(--rule-soft);border-radius:1px;transition:background .14s ease
+  }
+  .splitter:hover::after,.splitter:hover::before,
+  .splitter.dragging::after,.splitter.dragging::before,
+  .splitter:focus-visible::after,.splitter:focus-visible::before{background:var(--teal)}
+  .splitter:focus-visible{outline:none}
+  body.resizing{cursor:col-resize;user-select:none}
+
+  .rail{min-width:0;overflow-x:hidden}
+
+  /* ── candidate rows: rank earns apparatus, not a coloured slab ── */
+  .cand{
+    display:block;width:100%;text-align:left;background:transparent;
+    border:1px solid transparent;border-bottom:1px solid var(--rule-soft);
+    padding:11px 13px;cursor:pointer;transition:background .14s ease,border-color .14s ease
+  }
+  .cand:hover{background:var(--vellum)}
+  .cand.is-open{background:var(--paper);border-color:var(--ink)}
+  .cand.is-lead{background:linear-gradient(90deg,rgba(31,184,166,.10),transparent 62%)}
+  .cand.is-lead.is-open{background:var(--paper)}
+
+  .fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .34s cubic-bezier(.2,.9,.25,1)}
+  .cand.is-open .fold{grid-template-rows:1fr}
+  .fold>span{overflow:hidden;min-height:0}
+
+  .chev{transition:transform .28s cubic-bezier(.2,.9,.25,1)}
+  .cand.is-open .chev{transform:rotate(90deg)}
+
+  /* ── boxed chart note ── */
+  .note-box{border:1px solid var(--ink);padding:9px 11px;background:var(--paper)}
+  .note-box.caution{border-color:var(--amber);background:rgba(232,152,58,.06)}
+
+  .btn-run{
+    background:var(--ink);color:var(--paper);border:1px solid var(--ink);
+    transition:background .14s ease
+  }
+  .btn-run:hover:not(:disabled){background:#123049}
+  .btn-run:active:not(:disabled){background:#081826}
+  .btn-run:disabled{opacity:.45;cursor:default}
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::after,*::before{animation-duration:.01ms!important;animation-iteration-count:1!important;
+                         transition-duration:.01ms!important}
+  }
+</style>
+</head>
+
+<body class="bg-paper text-ink">
+<!--
+ THESIS: An admiralty chart, not an intelligence dashboard. Refuses the dark console with cyan accents
+   and glass panels that this category always ships.
+ OWN-WORLD: Chart-buff paper, navy hydrographic linework, minute-ticked double borders, stipple hatching,
+   sounding numerals in mono. Teal is surveyed fact; amber takes the magenta overprint's role for inference.
+ STORY: An officer reads a measured slick, an inferred origin, and five tracks ranked by evidence they can
+   audit line by line.
+ FIRST VIEWPORT: Title block left, minute-ticked chart panel centre over muted sea, empty candidate column
+   right, primary action top right.
+ FORM: Admiralty chart world, candidate 1 of the grounded list, user-pinned over the roll's index 3.
+   Seed key 8a9b54da.
+ FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict,
+   DESIGN.md, and every shipping raster carrying its provenance.
+-->
+
+<div class="h-screen w-screen flex flex-col">
+
+  <!-- ══════════ TITLE BLOCK ══════════ -->
+  <header class="shrink-0 border-b border-ink bg-paper">
+    <div class="flex items-stretch">
+
+      <div class="flex items-center gap-3.5 px-5 py-3 border-r" style="border-color:var(--rule)">
+        <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <circle cx="16" cy="16" r="12.4" stroke="#0A1F33" stroke-width="1.1"/>
+          <circle cx="16" cy="16" r="7.6"  stroke="#0A1F33" stroke-width=".7" opacity=".5"/>
+          <path d="M16 1.6v5M16 25.4v5M1.6 16h5M25.4 16h5" stroke="#0A1F33" stroke-width="1.1"/>
+          <path d="M16 5.6 19.1 16 16 26.4 12.9 16Z" fill="#1FB8A6"/>
+          <path d="M16 5.6 19.1 16 16 26.4Z" fill="#0A1F33" fill-opacity=".8"/>
+          <circle cx="16" cy="16" r="1.5" fill="#0A1F33"/>
+        </svg>
+        <div>
+          <h1 class="font-display text-[19px] font-bold leading-none tracking-[.03em]">OceanIQ</h1>
+          <p class="mt-1 font-mono text-[10px] leading-none tracking-[.17em] text-slate">SPILL ATTRIBUTION</p>
+        </div>
+      </div>
+
+      <dl class="hidden lg:flex items-center gap-7 px-6 font-mono text-[10.5px]">
+        <div><dt class="text-slate tracking-[.13em] text-[9.5px]">CASE</dt>
+             <dd id="mCase" class="mt-1 font-medium num">·</dd></div>
+        <div><dt class="text-slate tracking-[.13em] text-[9.5px]">SENSOR</dt>
+             <dd id="mSensor" class="mt-1 font-medium">·</dd></div>
+        <div><dt class="text-slate tracking-[.13em] text-[9.5px]">ACQUIRED</dt>
+             <dd id="mAcq" class="mt-1 font-medium num">·</dd></div>
+        <div><dt class="text-slate tracking-[.13em] text-[9.5px]">DATUM</dt>
+             <dd id="mDatum" class="mt-1 font-medium">·</dd></div>
+      </dl>
+
+      <div class="ml-auto flex items-center gap-3 px-5">
+        <p id="stage" class="hidden md:block font-mono text-[10.5px] tracking-[.1em] text-slate"
+           role="status" aria-live="polite">Awaiting reconstruction</p>
+        <button id="btnExpand" type="button" aria-pressed="false" title="Expand map (M)"
+          aria-label="Expand map"
+          class="inline-flex items-center justify-center border border-ink bg-paper p-2 hover:bg-vellum">
+          <svg id="expandIcon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6 1.5H1.5V6M10 14.5H14.5V10M14.5 6V1.5H10M1.5 10v4.5H6"
+                  stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <button id="btnRun" type="button"
+          class="btn-run inline-flex items-center gap-2.5 px-5 py-2.5 font-mono text-[11px] font-semibold tracking-[.15em]">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M2 8h3.4l1.8-4.6L9.9 12l1.6-4H14" stroke="currentColor" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="btnLabel">RECONSTRUCT INCIDENT</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div id="shell" class="flex-1 flex min-h-0" style="--rail-l:286px;--rail-r:392px">
+
+    <!-- ══════════ CASE RAIL ══════════ -->
+    <aside id="railL" class="rail shrink-0 bg-paper overflow-y-auto thin" style="width:var(--rail-l)">
+
+      <div class="px-5 pt-5 pb-4">
+        <h2 class="font-display text-[15px] font-semibold leading-tight">Detected slick</h2>
+        <p id="cBasin" class="mt-1 text-[11.5px] leading-snug text-slate">·</p>
+      </div>
+
+      <div class="mx-5 hair"></div>
+
+      <dl class="px-5 py-4 space-y-3.5 font-mono text-[11px]">
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-slate">Detected</dt><dd id="cDetected" class="num font-medium">·</dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-slate">Extent</dt>
+          <dd class="num font-medium"><span id="cArea">·</span> <span class="text-slate">km²</span></dd>
+        </div>
+        <div class="flex items-baseline justify-between gap-3">
+          <dt class="text-slate">Datum</dt><dd id="cDatum" class="font-medium">·</dd>
+        </div>
+      </dl>
+
+      <div class="px-5 pb-5">
+        <div class="flex items-baseline justify-between">
+          <span class="font-mono text-[11px] text-slate">Delineation confidence</span>
+          <span id="cConfVal" class="font-mono text-[11.5px] font-semibold num">·</span>
+        </div>
+        <div class="measure mt-2"><i id="cConfBar" style="background:var(--teal-ink)"></i></div>
+        <p id="cSurveyNote" class="mt-2 text-[12.5px] leading-relaxed text-slate"></p>
+      </div>
+
+      <div class="mx-5 hair"></div>
+
+      <!-- source & reliability: the chart's own way of stating provenance -->
+      <section class="px-5 py-4">
+        <h3 class="font-sans text-[11px] font-semibold tracking-[.12em] text-slate">SOURCE &amp; RELIABILITY</h3>
+        <figure class="mt-3">
+          <div class="border border-ink bg-vellum p-1.5">
+            <img id="cThumb" alt="Synthetic SAR acquisition covering the incident area"
+                 class="block w-full h-[86px] object-cover">
+            <div id="cThumbFallback" class="hidden h-[86px] w-full items-center justify-center bg-vellum text-center">
+              <span class="font-mono text-[10px] leading-snug text-slate">SCENE RASTER<br>UNAVAILABLE</span>
+            </div>
+          </div>
+          <figcaption class="mt-2 font-mono text-[10.5px] leading-relaxed text-slate">
+            <span id="cSensorCap">·</span><br>Zone A · full-resolution survey
+          </figcaption>
+          <p id="cMethod" class="mt-2.5 text-[12.5px] leading-relaxed text-slate"></p>
+        </figure>
+
+        <dl class="mt-3.5 space-y-2 font-mono text-[10.5px]">
+          <div class="flex items-center gap-2.5">
+            <span class="inline-block h-2.5 w-2.5 shrink-0 border border-ink" style="background:var(--teal-ink)"></span>
+            <dt class="text-slate">Surveyed</dt><dd class="ml-auto">slick extent</dd>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="inline-block h-2.5 w-2.5 shrink-0 border border-dashed"
+                  style="border-color:var(--amber);background:rgba(232,152,58,.24)"></span>
+            <dt class="text-slate">Inferred</dt><dd class="ml-auto">origin region</dd>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <span class="inline-block h-0.5 w-2.5 shrink-0" style="background:var(--slate)"></span>
+            <dt class="text-slate">Reported</dt><dd class="ml-auto">AIS track</dd>
+          </div>
+        </dl>
+      </section>
+
+      <div class="mx-5 hair"></div>
+
+      <section class="px-5 py-4">
+        <div class="note-box caution">
+          <h3 class="font-sans text-[11px] font-bold tracking-[.1em]" style="color:var(--amber-ink)">CAUTION</h3>
+          <p class="mt-1.5 text-[11px] leading-relaxed text-ink">
+            Attribution scores are investigative leads, not findings of liability. Corroborate with port
+            state records and bunker sampling before any escalation.
+          </p>
+        </div>
+        <p class="mt-3 font-mono text-[10px] leading-relaxed text-slate">
+          <span class="font-semibold">DEMONSTRATION DATA.</span> Vessels, tracks, scores and the scene
+          raster are synthetic. No real incident or vessel is depicted.
+        </p>
+      </section>
+    </aside>
+
+    <div class="splitter" data-split="l" role="separator" aria-orientation="vertical"
+         tabindex="0" aria-label="Resize case panel" title="Drag to resize · double-click to reset"></div>
+
+    <!-- ══════════ CHART ══════════ -->
+    <main class="flex-1 min-w-0 p-3.5">
+      <div class="chart-frame h-full w-full relative">
+        <div id="map" role="application" aria-label="Incident chart"></div>
+
+        <div class="pointer-events-none absolute right-[26px] top-[26px] z-[620]">
+          <svg width="26" height="34" viewBox="0 0 26 34" fill="none" aria-hidden="true">
+            <path d="M13 2.5 18 21l-5-3.6L8 21Z" fill="#0A1F33"/>
+            <path d="M13 2.5 18 21l-5-3.6Z" fill="#0A1F33" fill-opacity=".5"/>
+            <text x="13" y="32" text-anchor="middle" font-family="IBM Plex Mono, monospace"
+                  font-size="9" font-weight="600" fill="#0A1F33">N</text>
+          </svg>
+        </div>
+
+        <div id="veil" class="absolute inset-[11px] z-[640] flex items-center justify-center"
+             style="background:rgba(246,244,238,.66)">
+          <div class="max-w-[380px] px-6 text-center">
+            <p id="veilLede" class="font-display text-[17px] font-semibold leading-snug">
+              One acquisition.
+            </p>
+            <p class="mt-2.5 text-[13.5px] leading-relaxed text-slate">
+              Run the reconstruction to back-project the slick to a release region and rank
+              every track that crossed it.
+            </p>
+          </div>
+        </div>
+
+        <div id="loadErr" class="hidden absolute inset-[11px] z-[900] items-center justify-center bg-paper p-8">
+          <div class="max-w-[440px] note-box" style="border-color:var(--amber)">
+            <h2 class="font-mono text-[10.5px] font-bold tracking-[.15em]" style="color:var(--amber-ink)">DATA SOURCE UNREACHABLE</h2>
+            <p class="mt-2.5 text-[13px] leading-relaxed">
+              <code class="font-mono">mock-data.json</code> could not be read. Browsers block
+              <code class="font-mono">file://</code> fetches, so serve this folder over HTTP:
+            </p>
+            <pre class="mt-2.5 border bg-vellum p-2.5 font-mono text-[11.5px]" style="border-color:var(--rule)">python -m http.server 8000</pre>
+            <p class="mt-2 text-[11.5px] text-slate">Then open localhost:8000 — or run <code class="font-mono">serve.bat</code>.</p>
+            <label class="mt-3.5 inline-flex cursor-pointer items-center gap-2 border border-ink px-3 py-1.5 font-mono text-[10.5px] tracking-[.1em] hover:bg-vellum">
+              LOAD JSON MANUALLY
+              <input id="fileInput" type="file" accept=".json,application/json" class="sr-only">
+            </label>
+            <span id="fileErr" class="ml-2 font-mono text-[10.5px]" style="color:#B4501E"></span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div class="splitter" data-split="r" role="separator" aria-orientation="vertical"
+         tabindex="0" aria-label="Resize candidate panel" title="Drag to resize · double-click to reset"></div>
+
+    <!-- ══════════ CANDIDATES ══════════ -->
+    <aside id="railR" class="rail shrink-0 bg-paper flex flex-col min-h-0" style="width:var(--rail-r)">
+      <div class="shrink-0 px-5 pt-5 pb-3">
+        <h2 class="font-display text-[15px] font-semibold leading-tight">Candidate vessels</h2>
+        <p class="mt-1 text-[11.5px] text-slate">
+          Ranked by attribution score. Every score decomposes into five weighted factors.
+        </p>
+      </div>
+      <div class="mx-5 hair"></div>
+
+      <div id="candEmpty" class="flex-1 flex items-center justify-center px-9">
+        <p class="text-center text-[13px] leading-relaxed text-slate">
+          No candidates resolved.<br>
+          <span class="text-[11.5px]">Run the reconstruction to correlate AIS tracks against the modelled origin.</span>
+        </p>
+      </div>
+
+      <ul id="candList" class="hidden flex-1 overflow-y-auto thin"></ul>
+
+      <div class="shrink-0 border-t px-5 py-2.5" style="border-color:var(--rule-soft)">
+        <p class="font-sans text-[11px] leading-relaxed text-slate">
+          Weighting: proximity 25 · temporal 25 · trajectory 20 · drift 20 · AIS/SAR 10
+        </p>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   OceanIQ — reconstruction console
+   Swap DATA_SOURCE for the real pipeline endpoint; nothing else changes.
+   ═══════════════════════════════════════════════════════════════════ */
+
+const DATA_SOURCE = 'mock-data.json';
+
+const { animate, stagger } = Motion;
+const $ = s => document.querySelector(s);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const ABORT = Symbol('abort');
+
+const S = {
+  data:null, map:null, ships:[], anims:[], runToken:0, running:false, openId:null,
+  layers:{ scene:null, spill:null, origin:null, glow:null, note:null, tracks:[], fixes:[], grid:[] }
+};
+
+/* Chart ink logic: surveyed fact reads teal, caution amber, weak evidence slate. */
+const INK  = { teal:'#0E7A6E', amber:'#9A5B12', slate:'#5C6B78' };
+const band = s => s >= 70 ? 'teal' : s >= 40 ? 'amber' : 'slate';
+const bandInk = s => INK[band(s)];
+const verdict = s => s >= 70 ? 'Strong' : s >= 40 ? 'Moderate' : 'Weak';
+
+const guard = t => { if (t !== S.runToken) throw ABORT; };
+const tween = cfg => { const i = anime(cfg); S.anims.push(i); return i.finished; };
+const killAnims = () => { S.anims.forEach(a => { try { a.pause(); } catch(_){} }); S.anims = []; };
+
+const pad2 = n => String(n).padStart(2,'0');
+const fmtUTC = iso => { const d = new Date(iso);
+  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())} ${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}Z`; };
+const fmtClock = iso => { const d = new Date(iso); return `${pad2(d.getUTCHours())}${pad2(d.getUTCMinutes())}Z`; };
+const span = (a,b) => { const ms = new Date(b)-new Date(a);
+  return `${Math.floor(ms/3.6e6)}h ${pad2(Math.round((ms%3.6e6)/6e4))}m`; };
+
+/* GeoJSON is [lon,lat]; Leaflet wants [lat,lon]. */
+const toLatLngs = ring => ring.map(([lon,lat]) => [lat,lon]);
+const ringOf = poly => poly.coordinates[0];
+const southPoint = ring => ring.reduce((a,c) => c[1] < a[1] ? c : a);
+
+const setStage = t => { $('#stage').textContent = t; };
+
+/* ══════════ MAP ══════════ */
+function initMap(scene){
+  const map = L.map('map',{ center:scene.center, zoom:scene.zoom,
+                            zoomControl:false, attributionControl:true });
+
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom:13, attribution:'Esri Ocean Basemap' }
+  ).addTo(map);
+
+  L.control.zoom({ position:'bottomright' }).addTo(map);
+  L.control.scale({ position:'bottomleft', metric:true, imperial:false, maxWidth:130 }).addTo(map);
+
+  map.createPane('grid');   map.getPane('grid').style.zIndex   = 300;
+  map.createPane('scene');  map.getPane('scene').style.zIndex  = 350;
+  map.createPane('vector'); map.getPane('vector').style.zIndex = 420;
+  map.createPane('marks');  map.getPane('marks').style.zIndex  = 630;
+  return map;
+}
+
+/** Stipple + soft edge live in the overlay SVG's own defs. */
+function ensureDefs(el){
+  const svg = el.ownerSVGElement;
+  if (!svg || svg.querySelector('#oqDefs')) return;
+  const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+  defs.setAttribute('id','oqDefs');
+  defs.innerHTML =
+    `<pattern id="oqStipple" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+       <rect width="7" height="7" fill="#E8983A" fill-opacity=".07"/>
+       <circle cx="1.6" cy="1.6" r="1.15" fill="#E8983A" fill-opacity=".62"/>
+     </pattern>
+     <filter id="oqSoft" x="-30%" y="-30%" width="160%" height="160%">
+       <feGaussianBlur stdDeviation="11"/>
+     </filter>`;
+  svg.insertBefore(defs, svg.firstChild);
+}
+
+function primeStroke(layer){
+  const el = layer.getElement();
+  if (!el) return null;
+  const len = el.getTotalLength ? el.getTotalLength() : 0;
+  el.style.strokeDasharray  = `${len} ${len}`;
+  el.style.strokeDashoffset = len;
+  return { el, len };
+}
+
+function storyBounds(){
+  const pts = [
+    ...ringOf(S.data.spill_mask),
+    ...ringOf(S.data.origin_region.polygon),
+    ...S.data.candidate_ships.flatMap(s => s.track.coordinates)
+  ].map(([lon,lat]) => [lat,lon]);
+  return L.latLngBounds(pts);
+}
+const frameAll = anim => S.map.fitBounds(storyBounds(), { padding:[46,46], animate:!!anim });
+
+/** Meridians and parallels at a whole-fraction interval, drawn from real coordinates. */
+function drawGraticule(){
+  S.layers.grid.forEach(l => S.map.removeLayer(l));
+  S.layers.grid = [];
+
+  const b = storyBounds().pad(0.25);
+  const step = 0.1;                        // degrees; the chart's own division
+  const snap = (v, dir) => Math[dir](v / step) * step;
+  const style = { pane:'grid', color:'#0A1F33', weight:0.5, opacity:0.22,
+                  interactive:false, className:'oq-grat' };
+
+  for (let lat = snap(b.getSouth(),'ceil'); lat <= b.getNorth(); lat += step)
+    S.layers.grid.push(L.polyline([[lat,b.getWest()],[lat,b.getEast()]], style).addTo(S.map));
+
+  for (let lon = snap(b.getWest(),'ceil'); lon <= b.getEast(); lon += step)
+    S.layers.grid.push(L.polyline([[b.getSouth(),lon],[b.getNorth(),lon]], style).addTo(S.map));
+}
+
+/* ══════════ REVEAL ══════════ */
+
+// 1. the acquisition plate
+async function stepScene(token){
+  setStage('Ingesting scene');
+  const layer = L.imageOverlay(S.data.satellite_image_url, S.data.scene.bounds,
+    { pane:'scene', className:'scene-plate', interactive:false, alt:'' }).addTo(S.map);
+  S.layers.scene = layer;
+
+  // a missing raster degrades to the chart alone, never a broken image
+  const ok = await new Promise(res => {
+    const el = layer.getElement();
+    if (el.complete && el.naturalWidth) return res(true);
+    layer.once('load',  () => res(true));
+    layer.once('error', () => res(false));
+    setTimeout(() => res(!!(el.complete && el.naturalWidth)), 2500);
+  });
+  guard(token);
+
+  if (!ok){
+    S.map.removeLayer(layer);
+    S.layers.scene = null;
+  } else {
+    await animate(layer.getElement(), { opacity:[0,.72] }, { duration:.85, ease:[.16,1,.3,1] });
+  }
+  guard(token);
+}
+
+// 2. the surveyed slick, drawn as a delineation
+async function stepSpill(token){
+  setStage('Delineating slick');
+  const layer = L.polygon(toLatLngs(ringOf(S.data.spill_mask)),{
+    pane:'vector', className:'oq-path',
+    color:'#12897C', weight:1.6, opacity:1,
+    fillColor:'#1FB8A6', fillOpacity:0, lineJoin:'round'
+  }).addTo(S.map);
+  S.layers.spill = layer;
+
+  const p = primeStroke(layer);
+  await tween({ targets:p.el, strokeDashoffset:[p.len,0], duration:1250, easing:'easeInOutSine' });
+  guard(token);
+  await tween({ targets:p.el, fillOpacity:[0,.2], duration:460, easing:'easeOutQuad' });
+  guard(token);
+}
+
+// 3. the inferred origin: stippled, soft-edged, cautionary
+async function stepOrigin(token){
+  setStage('Back-projecting origin');
+  const ring = ringOf(S.data.origin_region.polygon);
+  const latlngs = toLatLngs(ring);
+
+  const glow = L.polygon(latlngs,{ pane:'vector', className:'oq-path', stroke:false,
+                                   fillColor:'#E8983A', fillOpacity:0, interactive:false }).addTo(S.map);
+  const layer = L.polygon(latlngs,{ pane:'vector', className:'oq-path',
+    color:'#C97F1E', weight:1.4, dashArray:'2 4', opacity:0,
+    fillColor:'#E8983A', fillOpacity:0, interactive:false }).addTo(S.map);
+  S.layers.glow = glow; S.layers.origin = layer;
+
+  const gEl = glow.getElement(), el = layer.getElement();
+  ensureDefs(el);
+  gEl.setAttribute('filter','url(#oqSoft)');
+  el.setAttribute('fill','url(#oqStipple)');
+  el.style.fillOpacity = 1;
+
+  await Promise.all([
+    tween({ targets:gEl, fillOpacity:[0,.30], duration:760, easing:'easeOutQuad' }),
+    tween({ targets:el,  opacity:[0,1],       duration:760, easing:'easeOutQuad' })
+  ]);
+  guard(token);
+
+  const tw = S.data.origin_region.time_window;
+  const [lon,lat] = southPoint(ring);
+  const note = L.marker([lat,lon],{
+    pane:'marks', interactive:false,
+    icon:L.divIcon({ className:'oq-note', iconSize:null, iconAnchor:[-13,-11],
+      html:`<div><b>RELEASE WINDOW · MODELLED</b>${fmtUTC(tw.start)} → ${fmtClock(tw.end)}
+            <b style="margin-top:3px">SPAN ${span(tw.start,tw.end)}</b></div>` })
+  }).addTo(S.map);
+  S.layers.note = note;
+
+  await animate(note.getElement().firstElementChild,
+    { opacity:[0,1], transform:['translateY(7px)','translateY(0px)'] },
+    { duration:.4, ease:[.16,1,.3,1] });
+  guard(token);
+}
+
+// 4. every reported track, weight and ink carrying its rank
+async function stepTracks(token){
+  setStage('Correlating AIS tracks');
+
+  const drawn = S.ships.map((ship,i) => {
+    const ink = bandInk(ship.score);
+    const layer = L.polyline(toLatLngs(ship.track.coordinates),{
+      pane:'vector', className:'oq-path oq-track',
+      color:ink, weight: 1.2 + (ship.score / 100) * 2.6,
+      opacity: 0.5 + (ship.score / 100) * 0.5,
+      lineCap:'round', lineJoin:'round'
+    }).addTo(S.map);
+
+    layer.bindTooltip(`${i+1} · ${ship.name} · ${ship.score}`,
+      { sticky:true, direction:'top', className:'oq-tip', opacity:1 });
+    layer.on('click', () => openShip(ship.id, true));
+    layer.on('mouseover', () => hot(ship.id));
+    layer.on('mouseout',  () => hot(null));
+
+    S.layers.tracks.push({ id:ship.id, layer, ink });
+    return { ship, i, ink, p:primeStroke(layer) };
+  });
+
+  await Promise.all(drawn.map(async d => {
+    await wait(d.i * 190);
+    if (token !== S.runToken) return;
+
+    const head = headDot(d.p.el, d.ink);
+    try {
+      await tween({ targets:d.p.el, strokeDashoffset:[d.p.len,0], duration:1150, easing:'easeInOutQuad',
+                    update:a => head && head.at(d.p.len * a.progress / 100) });
+    } finally { head && head.off(); }
+    if (token !== S.runToken) return;
+
+    const end = d.ship.track.coordinates[d.ship.track.coordinates.length - 1];
+    const fix = L.marker([end[1],end[0]],{
+      pane:'marks', interactive:false,
+      icon:L.divIcon({ className:'oq-fix', iconSize:[19,19], iconAnchor:[9,9], html:`<i>${d.i+1}</i>` })
+    }).addTo(S.map);
+    S.layers.fixes.push({ id:d.ship.id, marker:fix });
+    animate(fix.getElement(), { opacity:[0,1] }, { duration:.3, ease:[.16,1,.3,1] });
+  }));
+  guard(token);
+}
+
+function headDot(pathEl, ink){
+  if (!pathEl.getPointAtLength) return null;
+  const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  dot.setAttribute('r', 3.4); dot.setAttribute('fill', ink);
+  dot.setAttribute('class', 'oq-head');
+  pathEl.parentNode.appendChild(dot);
+  return {
+    at(len){ try{ const p = pathEl.getPointAtLength(len);
+                  dot.setAttribute('cx',p.x); dot.setAttribute('cy',p.y); }catch(_){} },
+    off(){ dot.remove(); }
+  };
+}
+
+// 5. the ranked column
+async function stepRanking(token){
+  setStage('Ranking candidates');
+  $('#candEmpty').classList.add('hidden');
+  const list = $('#candList');
+  list.classList.remove('hidden');
+  list.innerHTML = S.ships.map(row).join('');
+
+  list.querySelectorAll('.cand').forEach(el => {
+    el.addEventListener('click', () => openShip(el.dataset.id));
+    el.addEventListener('mouseenter', () => hot(el.dataset.id));
+    el.addEventListener('mouseleave', () => hot(null));
+  });
+
+  await animate(list.querySelectorAll('.cand'),
+    { opacity:[0,1], transform:['translateX(20px)','translateX(0px)'] },
+    { duration:.44, delay:stagger(.07), ease:[.16,1,.3,1] });
+  guard(token);
+
+  await Promise.all([...list.querySelectorAll('[data-meter]')].map((el,i) =>
+    animate(el, { width:['0%', el.dataset.meter + '%'] },
+            { duration:.62, delay:i*.06, ease:[.16,1,.3,1] })));
+  guard(token);
+}
+
+function row(ship,i){
+  const ink = bandInk(ship.score), lead = i === 0;
+  return `
+  <li>
+    <button type="button" class="cand ${lead?'is-lead':''}" data-id="${ship.id}"
+            aria-expanded="false" style="opacity:0">
+      <span class="flex items-start gap-3">
+        <span class="mt-[3px] flex h-[21px] w-[21px] shrink-0 items-center justify-center rounded-full
+                     border font-mono text-[10.5px] font-semibold num"
+              style="border-color:${ink};color:${lead?'#0A1F33':ink};background:${lead?ink:'transparent'}">${i+1}</span>
+
+        <span class="min-w-0 flex-1">
+          <span class="flex items-baseline justify-between gap-2">
+            <span class="truncate font-display text-[15px] font-semibold leading-tight">${ship.name}</span>
+            <span class="font-display text-[24px] font-bold leading-none num" style="color:${ink}">${ship.score}</span>
+          </span>
+
+          <span class="mt-1 flex items-baseline justify-between gap-2">
+            <span class="truncate font-mono text-[10.5px] text-slate">${ship.id} · ${ship.type}</span>
+            <span class="shrink-0 font-mono text-[10px] tracking-[.08em] text-slate">${verdict(ship.score)}</span>
+          </span>
+
+          <span class="measure mt-2 block"><i data-meter="${ship.score}" style="background:${ink}"></i></span>
+
+          <span class="mt-2 flex items-center gap-1.5 font-sans text-[11.5px] text-slate">
+            <svg class="chev" width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M4 2.5 8 6l-4 3.5" stroke="currentColor" stroke-width="1.6"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="fold-label">Five scored factors</span>
+          </span>
+
+          <span class="fold">${factors(ship, ink)}</span>
+        </span>
+      </span>
+    </button>
+  </li>`;
+}
+
+function factors(ship, ink){
+  const rows = ship.factors.map(f => {
+    const pct = Math.round(f.score / f.max * 100);
+    return `
+      <span class="block pt-3">
+        <span class="flex items-baseline justify-between gap-3">
+          <span class="font-mono text-[10.5px] font-medium">${f.label}</span>
+          <span class="shrink-0 font-mono text-[10.5px] num" style="color:${ink}">
+            <span class="font-semibold">${f.score}</span><span class="text-slate">/${f.max}</span>
+          </span>
+        </span>
+        <span class="measure mt-1.5 block"><i data-fbar="${pct}" style="background:${ink}"></i></span>
+        <span class="mt-1.5 block text-[13px] leading-relaxed text-slate">${f.explanation}</span>
+      </span>`;
+  }).join('');
+
+  return `<span class="block">
+      <span class="mt-3 mb-1 block hair"></span>${rows}
+      <span class="mt-4 mb-1 block border-t pt-2.5 font-mono text-[10.5px] text-slate" style="border-color:var(--rule-soft)">
+        Total ${ship.score}/100 · ${ship.flag} flag
+      </span>
+    </span>`;
+}
+
+/* ══════════ INTERACTION ══════════ */
+
+function hot(id){
+  S.layers.tracks.forEach(t => {
+    const el = t.layer.getElement(); if (!el) return;
+    el.classList.toggle('hot', !!id && t.id === id);
+    el.classList.toggle('dim', !!id && t.id !== id);
+  });
+  S.layers.fixes.forEach(f => {
+    const el = f.marker.getElement(); if (!el) return;
+    el.classList.toggle('is-hot', !!id && f.id === id);
+  });
+}
+
+function openShip(id, fromMap){
+  const el = document.querySelector(`.cand[data-id="${id}"]`);
+  if (!el) return;
+  const wasOpen = el.classList.contains('is-open');
+
+  document.querySelectorAll('.cand').forEach(c => {
+    c.classList.remove('is-open');
+    c.setAttribute('aria-expanded','false');
+    const l = c.querySelector('.fold-label');
+    if (l) l.textContent = 'Five scored factors';
+  });
+
+  if (wasOpen && !fromMap){ S.openId = null; setStage('Select a vessel'); return; }
+
+  el.classList.add('is-open');
+  el.setAttribute('aria-expanded','true');
+  el.querySelector('.fold-label').textContent = 'Hide breakdown';
+  S.openId = id;
+
+  el.querySelectorAll('[data-fbar]').forEach((bar,i) => {
+    bar.style.width = '0%';
+    animate(bar, { width:['0%', bar.dataset.fbar + '%'] },
+            { duration:.55, delay:.06 + i*.05, ease:[.16,1,.3,1] });
+  });
+
+  el.scrollIntoView({ block:'nearest', behavior:'smooth' });
+  hot(id);
+  setStage(`Dossier: ${S.ships.find(s => s.id === id).name}`);
+}
+
+/* ══════════ RUN ══════════ */
+async function run(){
+  if (S.running) return;
+  teardown();
+
+  const token = ++S.runToken;
+  S.running = true;
+  const btn = $('#btnRun');
+  btn.disabled = true;
+  $('#btnLabel').textContent = 'RECONSTRUCTING';
+
+  animate($('#veil'), { opacity:[1,0] }, { duration:.36 })
+    .then(() => $('#veil').classList.add('hidden'));
+
+  try{
+    await wait(180);        guard(token);
+    await stepScene(token);
+    await wait(90);         guard(token);
+    await stepSpill(token);
+    await wait(90);         guard(token);
+    await stepOrigin(token);
+    await wait(110);        guard(token);
+    await stepTracks(token);
+    await wait(110);        guard(token);
+    await stepRanking(token);
+    setStage('Select a vessel');
+  } catch(e){
+    if (e !== ABORT){ console.error(e); setStage('Reconstruction failed'); }
+  } finally {
+    if (token === S.runToken){
+      S.running = false;
+      btn.disabled = false;
+      $('#btnLabel').textContent = 'RUN AGAIN';
+    }
+  }
+}
+
+/** Clear every drawn layer so the sequence can be re-run from the top. */
+function teardown(){
+  S.runToken++; S.running = false; killAnims();
+  const L_ = S.layers;
+  [L_.scene,L_.spill,L_.origin,L_.glow,L_.note].forEach(l => l && S.map.removeLayer(l));
+  L_.tracks.forEach(t => S.map.removeLayer(t.layer));
+  L_.fixes.forEach(f => S.map.removeLayer(f.marker));
+  S.layers = Object.assign(S.layers,
+    { scene:null, spill:null, origin:null, glow:null, note:null, tracks:[], fixes:[] });
+  document.querySelectorAll('#map .oq-head').forEach(d => d.remove());
+
+  const list = $('#candList');
+  list.innerHTML = ''; list.classList.add('hidden');
+  $('#candEmpty').classList.remove('hidden');
+  S.openId = null;
+  $('#veil').classList.remove('hidden');
+  $('#veil').style.opacity = '1';
+}
+
+/* ══════════ BOOT ══════════ */
+
+/** Scene framing is optional in the contract — derive it when a real feed omits it. */
+function sceneOf(d){
+  if (d.scene?.center && d.scene?.bounds) return d.scene;
+  const ring = ringOf(d.spill_mask);
+  const lat = ring.map(c => c[1]), lon = ring.map(c => c[0]), pad = .12;
+  d.scene = Object.assign({
+    bounds:[[Math.min(...lat)-pad, Math.min(...lon)-pad],[Math.max(...lat)+pad, Math.max(...lon)+pad]],
+    center:[(Math.min(...lat)+Math.max(...lat))/2, (Math.min(...lon)+Math.max(...lon))/2],
+    zoom:11
+  }, d.scene || {});
+  return d.scene;
+}
+
+function ingest(d){
+  S.data = d;
+  S.ships = [...d.candidate_ships].sort((a,b) => b.score - a.score);
+  const inc = d.incident || {}, sc = sceneOf(d);
+
+  $('#mCase').textContent   = inc.case_id || sc.id || '·';
+  $('#mSensor').textContent = sc.sensor || '·';
+  $('#mAcq').textContent    = sc.acquired ? fmtUTC(sc.acquired) : '·';
+  $('#mDatum').textContent  = inc.chart_datum || 'WGS 84';
+
+  $('#cBasin').textContent     = inc.basin || 'Area of interest';
+  $('#cDetected').textContent  = inc.detected_at ? fmtUTC(inc.detected_at) : '·';
+  $('#cArea').textContent      = inc.area_km2 ?? '·';
+  $('#cDatum').textContent     = inc.chart_datum || 'WGS 84';
+  $('#cSensorCap').textContent = sc.sensor || 'Scene raster';
+
+  const conf = inc.confidence;
+  $('#cConfVal').textContent = conf == null ? '·' : Math.round(conf*100) + '%';
+  $('#cConfBar').style.width = conf == null ? '0%' : Math.round(conf*100) + '%';
+
+  $('#cSurveyNote').textContent = inc.survey_note || '';
+  $('#cMethod').textContent = d.origin_region?.method
+    ? 'Origin method: ' + d.origin_region.method + '.' : '';
+
+  const WORD = ['no','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten'];
+  const nShips = S.ships.length;
+  $('#veilLede').textContent =
+    `One acquisition. ${WORD[nShips] || nShips} vessel${nShips === 1 ? '' : 's'} in the frame.`;
+
+  const thumb = $('#cThumb');
+  thumb.onerror = () => { thumb.classList.add('hidden');
+                          $('#cThumbFallback').classList.replace('hidden','flex'); };
+  thumb.src = d.satellite_image_url || '';
+
+  if (!S.map) S.map = initMap(sc);
+  frameAll(false);
+  drawGraticule();
+  setStage('Awaiting reconstruction');
+}
+
+async function boot(){
+  try{
+    const res = await fetch(DATA_SOURCE, { cache:'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    ingest(await res.json());
+  }catch(err){
+    console.warn('[OceanIQ] data source unreachable:', err);
+    $('#loadErr').classList.replace('hidden','flex');
+  }
+}
+
+$('#fileInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try{
+    ingest(JSON.parse(await f.text()));
+    $('#loadErr').classList.replace('flex','hidden');
+  }catch(_){ $('#fileErr').textContent = 'INVALID JSON'; }
+});
+
+/* ══════════ PANEL SIZING ══════════
+   The chart is the working surface, so both rails give way to it on demand. */
+const SHELL = $('#shell');
+const RAIL = { l:{ var:'--rail-l', min:190, max:520, def:286 },
+               r:{ var:'--rail-r', min:250, max:640, def:392 } };
+
+const railPx = side => parseFloat(getComputedStyle(SHELL).getPropertyValue(RAIL[side].var)) || 0;
+
+function setRail(side, px, clamp = true){
+  const c = RAIL[side];
+  const v = clamp ? Math.min(c.max, Math.max(c.min, px)) : Math.max(0, px);
+  SHELL.style.setProperty(c.var, v + 'px');
+  const sp = document.querySelector(`.splitter[data-split="${side}"]`);
+  if (sp) sp.setAttribute('aria-valuenow', Math.round(v));
+  return v;
+}
+
+let resizeQueued = false;
+function syncMap(){
+  if (resizeQueued) return;
+  resizeQueued = true;
+  requestAnimationFrame(() => { resizeQueued = false; S.map && S.map.invalidateSize({ animate:false }); });
+}
+
+const RAIL_KEY = 'oceaniq.rails';
+function saveRails(){
+  try { localStorage.setItem(RAIL_KEY, JSON.stringify({ l:railPx('l'), r:railPx('r') })); } catch(_){}
+}
+function loadRails(){
+  try {
+    const v = JSON.parse(localStorage.getItem(RAIL_KEY) || 'null');
+    if (v && typeof v.l === 'number'){ setRail('l', v.l); setRail('r', v.r); }
+  } catch(_){}
+}
+
+document.querySelectorAll('.splitter').forEach(sp => {
+  const side = sp.dataset.split;
+  Object.assign(sp, {});
+  sp.setAttribute('aria-valuemin', RAIL[side].min);
+  sp.setAttribute('aria-valuemax', RAIL[side].max);
+  sp.setAttribute('aria-valuenow', Math.round(railPx(side)));
+
+  sp.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    try { sp.setPointerCapture(e.pointerId); } catch(_){}
+    sp.classList.add('dragging');
+    document.body.classList.add('resizing');
+    const x0 = e.clientX, w0 = railPx(side);
+
+    const move = ev => { setRail(side, side === 'l' ? w0 + (ev.clientX - x0) : w0 - (ev.clientX - x0)); syncMap(); };
+    const up = () => {
+      sp.classList.remove('dragging');
+      document.body.classList.remove('resizing');
+      sp.removeEventListener('pointermove', move);
+      sp.removeEventListener('pointerup', up);
+      sp.removeEventListener('pointercancel', up);
+      expanded = false; $('#btnExpand').setAttribute('aria-pressed','false');
+      saveRails(); syncMap();
+    };
+    sp.addEventListener('pointermove', move);
+    sp.addEventListener('pointerup', up);
+    sp.addEventListener('pointercancel', up);
+  });
+
+  sp.addEventListener('dblclick', () => { setRail(side, RAIL[side].def); saveRails(); syncMap(); });
+
+  sp.addEventListener('keydown', e => {
+    const step = e.shiftKey ? 48 : 16;
+    let d = 0;
+    if (e.key === 'ArrowLeft')  d = side === 'l' ? -step :  step;
+    if (e.key === 'ArrowRight') d = side === 'l' ?  step : -step;
+    if (e.key === 'Home'){ setRail(side, RAIL[side].def); saveRails(); syncMap(); e.preventDefault(); return; }
+    if (!d) return;
+    e.preventDefault();
+    setRail(side, railPx(side) + d); saveRails(); syncMap();
+  });
+});
+
+/* one control that gives the whole window to the chart, and gives it back */
+let expanded = false, stash = null;
+function toggleExpand(force){
+  expanded = force === undefined ? !expanded : force;
+  if (expanded){
+    stash = { l:railPx('l'), r:railPx('r') };
+    setRail('l', 0, false); setRail('r', 0, false);
+  } else if (stash){
+    setRail('l', stash.l); setRail('r', stash.r);
+  }
+  $('#btnExpand').setAttribute('aria-pressed', String(expanded));
+  $('#btnExpand').setAttribute('aria-label', expanded ? 'Restore panels' : 'Expand map');
+  syncMap();
+}
+$('#btnExpand').addEventListener('click', () => toggleExpand());
+
+loadRails();
+
+$('#btnRun').addEventListener('click', run);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && S.openId) openShip(S.openId);
+  if (e.key === ' ' && !S.running && e.target === document.body){ e.preventDefault(); run(); }
+  if (e.key.toLowerCase() === 'm' && !e.metaKey && !e.ctrlKey && e.target === document.body) toggleExpand();
+});
+window.addEventListener('resize', () => S.map && S.map.invalidateSize({ animate:false }));
+
+boot();
+</script>
+</body>
+</html>

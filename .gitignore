@@ -1,45 +1,15 @@
-# Datasets and archives - regenerate via Kaggle (~39s in Colab), never commit
-oil_spill.zip
-oil_spill_small.zip
-files.zip
-oil_spill/
-data/
+# Impeccable review artifacts (screenshots) - bigger than the app itself
+.impeccable/
 
-# Python
-__pycache__/
-*.pyc
-.ipynb_checkpoints/
+# Local agent/tool hooks: these hardcode absolute home paths and are machine-specific
+.claude/
+.codex/
+.agents/
 
-# Credentials - never commit
-kaggle.json
-*.pth
-
-# Secrets - never commit
-.env
-.env.*
-
-# --- hardened for public/shared hosting ---
-# credentials anywhere in the tree, not just the root
-**/kaggle.json
-**/.env
-**/*.pem
-**/*.key
-credentials.json
-client_secret*.json
-service_account*.json
-
-# model weights - too large for git regardless of secrecy
-*.pt
-*.ckpt
-*.h5
-*.onnx
-*.safetensors
-
-# local env / tooling
-.venv/
-venv/
+# OS / editor noise
+Thumbs.db
+desktop.ini
 .DS_Store
-/tmp/
-scratch/
-*.bak
-fixtures/*.bak
+*.swp
+.vscode/
+.idea/
