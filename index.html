@@ -3,1017 +3,764 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>OCEANIQ — Maritime Spill Intelligence</title>
+<title>OceanIQ — Incident Console</title>
+
 <link rel="stylesheet" href="lib/leaflet.css" />
 <link rel="stylesheet" href="lib/fonts.css" />
 <script src="lib/tailwind.js"></script>
 <script src="lib/leaflet.js"></script>
+
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { paper:'#F6F4EE', vellum:'#EDE9DE', ink:'#0A1F33', teal:'#1FB8A6', amber:'#E8983A', slate:'#5C6B78' },
+    fontFamily: {
+      display:['Space Grotesk','system-ui','sans-serif'],
+      sans:['IBM Plex Sans','system-ui','sans-serif'],
+      mono:['IBM Plex Mono','ui-monospace','monospace']
+    }
+  }}};
+</script>
+
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
-
-  :root {
-    --bg-dark: #02060d;
-    --panel-1: #08101a;
-    --panel-2: #0c1825;
-    --border: #1a293b;
-    --amber: #d97725;
-    --cyan: #3b8c9e;
-    --green: #449c71;
-    --text-main: #d1d5db;
-    --text-muted: #6b7280;
+  :root{
+    --paper:#F6F4EE; --vellum:#EDE9DE; --ink:#0A1F33; --teal:#1FB8A6; --amber:#E8983A;
+    --slate:#5C6B78; --rule:#C9C3B4; --rule-soft:#DCD7C9;
+    --teal-ink:#0E7A6E; --amber-ink:#9A5B12; --red-ink:#A32E1E;
   }
+  html,body{height:100%}
+  body{background:var(--paper);color:var(--ink);overflow:hidden;
+       font-family:'IBM Plex Sans',system-ui,sans-serif;
+       -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
 
-  body {
-    background-color: var(--bg-dark);
-    color: var(--text-main);
-    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    overflow: hidden;
-  }
+  ::selection{background:rgba(31,184,166,.28);color:var(--ink)}
+  :focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:1px}
+  .thin{scrollbar-width:thin;scrollbar-color:var(--rule) transparent}
+  .thin::-webkit-scrollbar{width:9px;height:9px}
+  .thin::-webkit-scrollbar-thumb{background:var(--rule);border:3px solid var(--paper)}
+  .thin::-webkit-scrollbar-track{background:transparent}
+  .num{font-variant-numeric:tabular-nums}
 
-  /* Scrollbars */
-  .thin-scroll::-webkit-scrollbar { width: 4px; }
-  .thin-scroll::-webkit-scrollbar-track { background: transparent; }
-  .thin-scroll::-webkit-scrollbar-thumb { background: var(--border); }
-  .thin-scroll::-webkit-scrollbar-thumb:hover { background: #2d4564; }
+  /* ── chart frame ── */
+  .chart-frame{position:relative;padding:11px;border:1px solid var(--ink);background:var(--paper)}
+  .chart-frame::after{content:'';position:absolute;inset:11px;border:1px solid var(--ink);pointer-events:none;z-index:600}
+  #map{position:absolute;inset:11px;background:var(--vellum)}
+  .leaflet-container{background:var(--vellum);font-family:'IBM Plex Mono',monospace}
+  .leaflet-tile-pane{filter:sepia(.30) saturate(.55) brightness(1.08) contrast(.95)}
+  .leaflet-control-attribution{background:rgba(246,244,238,.9)!important;color:var(--slate)!important;
+    font:400 9px/1.4 'IBM Plex Mono',monospace!important;border:1px solid var(--rule-soft);padding:2px 6px!important}
+  .leaflet-control-attribution a{color:var(--slate)!important}
+  .leaflet-control-zoom{border:1px solid var(--ink)!important;box-shadow:none!important}
+  .leaflet-control-zoom a{background:var(--paper)!important;color:var(--ink)!important;
+    border-bottom:1px solid var(--rule)!important;width:26px!important;height:26px!important;
+    line-height:26px!important;font-size:15px!important}
+  .leaflet-control-zoom a:hover{background:var(--vellum)!important}
+  .leaflet-control-scale-line{background:rgba(246,244,238,.9)!important;border:1px solid var(--ink)!important;
+    border-top:0!important;color:var(--ink)!important;font:500 9px/1.5 'IBM Plex Mono',monospace!important;
+    padding:1px 5px!important;border-radius:0!important}
 
-  /* Map styling */
-  .leaflet-container { background-color: var(--bg-dark); font-family: 'IBM Plex Mono', monospace; }
-  .leaflet-control-zoom { border: 1px solid var(--border) !important; border-radius: 0 !important; }
-  .leaflet-control-zoom a { background: var(--panel-1) !important; color: var(--text-main) !important; border-bottom: 1px solid var(--border) !important; border-radius: 0 !important; }
-  .leaflet-control-zoom a:hover { background: var(--panel-2) !important; }
-  .leaflet-control-attribution { background: rgba(8, 16, 26, 0.9) !important; color: var(--text-muted) !important; font-size: 9px !important; text-transform: uppercase; }
-  .leaflet-control-attribution a { color: var(--cyan) !important; }
+  /* ── form atoms ── */
+  .fld{width:100%;background:var(--paper);border:1px solid var(--rule);padding:5px 7px;
+       font:500 11.5px/1.4 'IBM Plex Mono',monospace;color:var(--ink)}
+  .fld:focus{border-color:var(--teal);outline:none}
+  .lbl{display:block;font:600 9.5px/1.2 'IBM Plex Sans',sans-serif;letter-spacing:.13em;
+       text-transform:uppercase;color:var(--slate)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;
+       background:var(--ink);color:var(--paper);border:1px solid var(--ink);padding:10px 14px;
+       font:600 11.5px/1 'IBM Plex Mono',monospace;letter-spacing:.14em;cursor:pointer;
+       transition:background .14s ease}
+  .btn:hover:not(:disabled){background:#123049}
+  .btn:disabled{opacity:.4;cursor:default}
 
-  /* Custom Layers */
-  .spill-mask { fill: var(--amber); fill-opacity: 0.35; color: var(--amber); weight: 1; }
-  .origin-region { fill: var(--cyan); fill-opacity: 0.15; color: var(--cyan); weight: 1; dashArray: 4,4; }
-  .drift-particle { fill: #94a3b8; fill-opacity: 0.8; color: transparent; radius: 1; }
-  .vessel-track { color: #475569; weight: 1; opacity: 0.6; }
-  .vessel-track.active { color: #ffffff; weight: 2; opacity: 1; }
+  .drop{border:1.5px dashed var(--rule);background:var(--vellum);padding:18px 12px;text-align:center;
+        cursor:pointer;transition:border-color .14s ease,background .14s ease}
+  .drop:hover,.drop.over{border-color:var(--teal);background:#EAF2F1}
 
-  /* Typography dense reset */
-  h1, h2, h3, div, span { letter-spacing: -0.02em; }
-  .uppercase { letter-spacing: 0.05em; }
+  .measure{position:relative;height:7px;background:var(--vellum);border:1px solid var(--rule)}
+  .measure::after{content:'';position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(90deg,transparent 0 calc(10% - 1px),rgba(10,31,51,.22) calc(10% - 1px) 10%)}
+  .measure i{display:block;height:100%;width:0;transition:width .5s cubic-bezier(.16,1,.3,1)}
 
-  /* Animations */
-  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-  .animate-blink { animation: blink 1.5s infinite; }
-  
-  /* Trace Panel */
-  #trace-panel-body {
-     max-height: 0; overflow: hidden; transition: max-height 0.1s ease-out;
-  }
-  #trace-panel-body.open { max-height: 200px; overflow-y: auto; }
+  .hair{height:1px;background:var(--rule-soft)}
+  .note{border:1px solid var(--amber);background:#FBF3E7;padding:9px 11px}
+  .note.bad{border-color:var(--red-ink);background:#FBEDEA}
+  .note.good{border-color:var(--teal-ink);background:#EAF2F1}
+
+  /* ── vessel rows ── */
+  .vrow{display:block;width:100%;text-align:left;background:transparent;border:1px solid transparent;
+        border-bottom:1px solid var(--rule-soft);padding:11px 13px;cursor:pointer;
+        transition:background .14s ease,border-color .14s ease}
+  .vrow:hover{background:var(--vellum)}
+  .vrow.is-open{background:var(--paper);border-color:var(--ink)}
+  .vrow.is-lead{background:linear-gradient(90deg,rgba(31,184,166,.10),transparent 62%)}
+  .vrow.is-lead.is-open{background:var(--paper)}
+  .fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.16,1,.3,1)}
+  .fold>span{overflow:hidden;min-height:0}
+  .vrow.is-open .fold{grid-template-rows:1fr}
+
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;
+      font:500 11px/1.5 'IBM Plex Mono',monospace}
+  .kv dt{color:var(--slate);white-space:nowrap}
+  .kv dd{text-align:right}
+  .unavail{color:var(--amber-ink)}
+
+  /* ── splitters ── */
+  .splitter{flex:0 0 7px;position:relative;cursor:col-resize;touch-action:none;background:transparent;border:0;padding:0}
+  .splitter::after{content:'';position:absolute;top:0;bottom:0;left:2px;right:2px;background:var(--rule);transition:background .14s}
+  .splitter::before{content:'';position:absolute;top:50%;left:0;right:0;height:26px;margin-top:-13px;
+    background:var(--rule-soft);transition:background .14s}
+  .splitter:hover::after,.splitter:hover::before,.splitter.dragging::after,
+  .splitter.dragging::before,.splitter:focus-visible::after,.splitter:focus-visible::before{background:var(--teal)}
+  .splitter:focus-visible{outline:none}
+  body.resizing{cursor:col-resize;user-select:none}
+  .rail{min-width:0;overflow-x:hidden}
+
+  /* ── map marks ── */
+  .oq-pin{background:none;border:0}
+  .oq-pin i{display:block;width:15px;height:15px;border-radius:50%;border:2px solid var(--ink);
+            background:var(--teal);cursor:grab}
+  .oq-vessel{background:none;border:0}
+  .oq-vessel i{display:flex;align-items:center;justify-content:center;width:20px;height:20px;
+    border-radius:50%;border:1.5px solid var(--ink);background:var(--paper);font-style:normal;
+    font:600 10px/1 'IBM Plex Mono',monospace;color:var(--ink);transition:transform .16s ease}
+  .oq-vessel.hot i{transform:scale(1.3)}
+  .oq-tip{background:var(--paper);border:1px solid var(--ink);border-radius:0;color:var(--ink);
+    font:500 10.5px/1.3 'IBM Plex Mono',monospace;padding:3px 6px;box-shadow:none}
+  .oq-tip::before{display:none}
+  .spin{animation:sp 1s linear infinite;transform-origin:center}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
-<body class="h-screen w-screen flex flex-col antialiased text-[11px] leading-tight">
 
-  <!-- HEADER -->
-  <header class="h-[40px] shrink-0 border-b flex items-center justify-between px-4" style="border-color: var(--border); background-color: var(--panel-1);">
-    <div class="flex items-center gap-3">
-      <div class="font-bold text-sm text-white">OCEANIQ</div>
-      <div class="h-3 w-px bg-[var(--border)]"></div>
-      <div class="text-[9px] text-[var(--text-muted)] uppercase" id="header-status">SYS_IDLE</div>
+<body class="font-sans">
+<div class="h-screen w-screen flex flex-col">
+
+  <!-- ══════════ HEADER ══════════ -->
+  <header class="shrink-0 flex items-center gap-5 px-5 h-14 border-b" style="border-color:var(--rule)">
+    <div class="flex items-center gap-2.5">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.2"/>
+        <path d="M12 3.5 14 12l-2 8.5L10 12z" fill="currentColor"/>
+        <circle cx="12" cy="12" r="1.4" fill="var(--paper)"/>
+      </svg>
+      <div class="leading-none">
+        <div class="font-display text-[17px] font-bold tracking-tight">OceanIQ</div>
+        <div class="mt-[3px] font-mono text-[8.5px] tracking-[.2em] uppercase" style="color:var(--slate)">Spill Attribution</div>
+      </div>
     </div>
-    <div class="flex gap-3">
-      <button id="btn-reset" class="hidden text-[9px] uppercase text-[var(--text-muted)] hover:text-white transition-none">RST</button>
-      <button id="btn-replay" class="hidden text-[9px] uppercase px-2 py-0.5 border text-[var(--cyan)] border-[var(--cyan)] hover:bg-[var(--cyan)] hover:text-[var(--bg-dark)] transition-none">EXEC_REPLAY</button>
+
+    <div class="w-px h-7" style="background:var(--rule)"></div>
+    <div id="health" class="font-mono text-[10px]" style="color:var(--slate)">checking backend…</div>
+
+    <div class="ml-auto flex items-center gap-3">
+      <span id="stage" role="status" aria-live="polite" class="font-mono text-[10.5px]" style="color:var(--slate)">Upload a scene to begin</span>
+      <button id="btnExpand" type="button" aria-pressed="false" aria-label="Expand map" title="Expand map (M)"
+              class="border p-2" style="border-color:var(--ink)">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M6 1.5H1.5V6M10 14.5H14.5V10M14.5 6V1.5H10M1.5 10v4.5H6"
+                stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </button>
     </div>
   </header>
 
-  <div class="flex-1 flex overflow-hidden min-h-0 relative">
-    
-    <!-- MAP AREA -->
-    <main class="flex-[2] relative z-0">
-      <div id="map" class="absolute inset-0"></div>
-      
-      <!-- DATA PROVENANCE -->
-      <div id="provenance-banner" class="absolute top-2 left-2 z-[500] hidden">
-        <div class="bg-[rgba(217,119,37,0.15)] border border-[var(--amber)] px-3 py-1.5 flex items-center gap-2 backdrop-blur-sm">
-          <span class="inline-block w-1.5 h-1.5 bg-[var(--amber)] animate-blink"></span>
-          <span class="text-[9px] uppercase font-bold" style="color: var(--amber);" id="provenance-text">CTRL_VAL_SCENARIO</span>
+  <div id="shell" class="flex-1 flex min-h-0" style="--rail-l:310px;--rail-r:400px">
+
+    <!-- ══════════ LEFT: INPUT ══════════ -->
+    <aside id="railL" class="rail shrink-0 flex flex-col min-h-0" style="width:var(--rail-l)">
+     <div class="flex-1 overflow-y-auto thin px-4 py-4">
+
+      <h2 class="font-display text-[15px] font-semibold">Incident setup</h2>
+      <p class="mt-1 text-[12.5px] leading-relaxed" style="color:var(--slate)">
+        Upload a satellite scene. The slick is screened here in the browser; its centroid is what
+        the attribution backend receives.
+      </p>
+
+      <div class="mt-4">
+        <span class="lbl">1 · Satellite scene</span>
+        <div id="drop" class="drop mt-2" role="button" tabindex="0" aria-label="Upload satellite image">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="mx-auto" style="color:var(--slate)" aria-hidden="true">
+            <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M3.5 15v3.5a1.5 1.5 0 0 0 1.5 1.5h14a1.5 1.5 0 0 0 1.5-1.5V15" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <div class="mt-2 font-mono text-[11px]">Drop image or click</div>
+          <div class="mt-1 text-[11px]" style="color:var(--slate)">PNG · JPG · SAR chip</div>
+          <input id="file" type="file" accept="image/*" class="hidden">
+        </div>
+        <div id="fileInfo" class="mt-2 font-mono text-[10.5px] hidden" style="color:var(--slate)"></div>
+      </div>
+
+      <div class="mt-5">
+        <span class="lbl">2 · Scene bounds (WGS 84)</span>
+        <p class="mt-1.5 text-[11.5px] leading-relaxed" style="color:var(--slate)">
+          A PNG carries no geotransform, so the corners must be declared. These place the image on the chart.
+        </p>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+          <label><span class="lbl">North</span><input id="bN" class="fld mt-1" type="number" step="0.0001" value="18.60"></label>
+          <label><span class="lbl">South</span><input id="bS" class="fld mt-1" type="number" step="0.0001" value="18.30"></label>
+          <label><span class="lbl">West</span><input id="bW" class="fld mt-1" type="number" step="0.0001" value="68.90"></label>
+          <label><span class="lbl">East</span><input id="bE" class="fld mt-1" type="number" step="0.0001" value="69.20"></label>
         </div>
       </div>
-      
-      <!-- TIMELINE (Bottom of map) -->
-      <div id="timeline-overlay" class="absolute bottom-2 left-2 right-2 z-[500] hidden">
-         <div class="bg-[var(--panel-1)] border border-[var(--border)] p-2 flex flex-col opacity-95">
-             <div class="text-[8px] text-[var(--text-muted)] uppercase mb-1">TMP_AXIS</div>
-             <div class="relative h-4 flex items-center">
-                 <div class="absolute inset-x-0 h-px bg-[var(--border)]"></div>
-                 <div id="tl-window" class="absolute h-1.5 bg-[var(--cyan)] opacity-50 hidden" style="left: 20%; width: 50%;"></div>
-                 <div id="tl-spill" class="absolute w-1.5 h-1.5 bg-[var(--amber)] hidden" style="left: 10%;"></div>
-                 <div id="tl-ais" class="absolute w-1.5 h-1.5 bg-white hidden" style="left: 60%;"></div>
-             </div>
-             <div class="flex justify-between text-[7px] text-[var(--text-muted)] mt-0.5">
-                 <span>2024-01-02T00:00Z</span>
-                 <span>2024-01-04T00:00Z</span>
-             </div>
-         </div>
+
+      <div class="mt-5">
+        <span class="lbl">3 · Slick screening</span>
+        <label class="mt-2 block">
+          <span class="flex items-baseline justify-between">
+            <span class="text-[11.5px]" style="color:var(--slate)">Darkness threshold</span>
+            <span id="thVal" class="font-mono text-[11px] num">70</span>
+          </span>
+          <input id="th" type="range" min="10" max="160" value="70" class="w-full mt-1.5" style="accent-color:#0E7A6E">
+        </label>
+        <p class="mt-1 text-[11px] leading-relaxed" style="color:var(--slate)">
+          Oil damps surface roughness, so a slick reads darker than open water. This is a heuristic
+          screener, not the trained classifier.
+        </p>
+        <div id="detOut" class="mt-2.5 hidden">
+          <div class="hair my-2.5"></div>
+          <dl class="kv">
+            <dt>Slick pixels</dt><dd id="dPix">—</dd>
+            <dt>Scene coverage</dt><dd id="dCov">—</dd>
+            <dt>Centroid lat</dt><dd id="dLat">—</dd>
+            <dt>Centroid lon</dt><dd id="dLon">—</dd>
+          </dl>
+          <p class="mt-2 text-[11px] leading-relaxed" style="color:var(--slate)">
+            Drag the pin on the chart to correct the position before analysing.
+          </p>
+        </div>
       </div>
+
+      <div class="mt-5">
+        <span class="lbl">4 · Query window</span>
+        <div class="mt-2 space-y-2">
+          <label class="block"><span class="lbl">Detected (UTC)</span>
+            <input id="qTime" class="fld mt-1" type="datetime-local" value="2024-01-15T12:00"></label>
+          <div class="grid grid-cols-2 gap-2">
+            <label><span class="lbl">Radius km</span><input id="qRad" class="fld mt-1" type="number" min="1" max="500" value="50"></label>
+            <label><span class="lbl">Window h</span><input id="qWin" class="fld mt-1" type="number" min="1" max="8760" value="24"></label>
+          </div>
+        </div>
+        <p class="mt-1.5 text-[11px] leading-relaxed" style="color:var(--slate)">
+          The window runs <em>backwards</em> from detection — discharge precedes the image.
+        </p>
+      </div>
+
+      <div class="hair my-4"></div>
+      <div class="note">
+        <div class="font-sans text-[10.5px] font-bold tracking-[.1em] uppercase" style="color:var(--amber-ink)">Caution</div>
+        <p class="mt-1 text-[11.5px] leading-relaxed" style="color:var(--slate)">
+          Scores are investigative leads, not findings of liability. Corroborate with port state
+          records before any escalation.
+        </p>
+      </div>
+      <div class="h-2"></div>
+     </div>
+
+     <div class="shrink-0 border-t px-4 py-3" style="border-color:var(--rule);background:var(--paper)">
+      <button id="btnRun" class="btn" disabled>
+        <svg id="runIcon" width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M1 8h3l2-5 3 10 2-5h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span id="runLabel">ANALYSE INCIDENT</span>
+      </button>
+      <p class="mt-2 text-[10.5px] leading-relaxed" style="color:var(--slate)">
+        Sends the centroid to <code class="font-mono">POST /api/rank-vessels</code>.
+      </p>
+     </div>
+    </aside>
+
+    <div class="splitter" data-split="l" role="separator" aria-orientation="vertical" tabindex="0"
+         aria-label="Resize setup panel" title="Drag to resize · double-click to reset"></div>
+
+    <!-- ══════════ CENTRE: CHART ══════════ -->
+    <main class="flex-1 min-w-0 p-3.5">
+      <div class="chart-frame h-full"><div id="map"></div></div>
     </main>
 
-    <!-- INVESTIGATION PANEL (Right) -->
-    <aside class="flex-1 max-w-[400px] border-l flex flex-col z-10" style="border-color: var(--border); background-color: var(--panel-1);">
-      
-      <!-- GLOBAL PIPELINE BAR -->
-      <div id="global-pipeline" class="border-b p-2 flex justify-between items-center bg-[var(--bg-dark)] hidden" style="border-color: var(--border);">
-         <div class="text-[8px] uppercase flex items-center gap-1 flex-wrap">
-             <span id="pipe-1" class="text-[var(--text-muted)]">○ SCN</span> <span class="text-[var(--border)]">→</span>
-             <span id="pipe-2" class="text-[var(--text-muted)]">○ DTC</span> <span class="text-[var(--border)]">→</span>
-             <span id="pipe-3" class="text-[var(--text-muted)]">○ SCR</span> <span class="text-[var(--border)]">→</span>
-             <span id="pipe-4" class="text-[var(--text-muted)]">○ BCK</span> <span class="text-[var(--border)]">→</span>
-             <span id="pipe-5" class="text-[var(--text-muted)]">○ ORG</span> <span class="text-[var(--border)]">→</span>
-             <span id="pipe-6" class="text-[var(--text-muted)]">○ AIS</span> <span class="text-[var(--border)]">→</span>
-             <span id="pipe-7" class="text-[var(--text-muted)]">○ RNK</span> <span class="text-[var(--border)]">→</span>
-             <span id="pipe-8" class="text-[var(--text-muted)]">○ EXP</span>
-         </div>
+    <div class="splitter" data-split="r" role="separator" aria-orientation="vertical" tabindex="0"
+         aria-label="Resize results panel" title="Drag to resize · double-click to reset"></div>
+
+    <!-- ══════════ RIGHT: RESULTS ══════════ -->
+    <aside id="railR" class="rail shrink-0 flex flex-col min-h-0" style="width:var(--rail-r)">
+      <div class="shrink-0 px-4 pt-4 pb-3 border-b" style="border-color:var(--rule)">
+        <h2 class="font-display text-[15px] font-semibold">Attribution result</h2>
+        <p id="resSub" class="mt-1 text-[12.5px] leading-relaxed" style="color:var(--slate)">Nothing analysed yet.</p>
       </div>
 
-      <div id="panel-content" class="flex-1 overflow-y-auto thin-scroll p-3 pb-20">
-        <!-- Content swapped via JS -->
-      </div>
-      
-      <!-- SYSTEM TRACE PANEL -->
-      <div id="trace-panel" class="absolute bottom-0 w-full border-t bg-[var(--panel-1)] hidden" style="border-color: var(--border);">
-         <div class="p-1.5 flex justify-between items-center cursor-pointer hover:bg-[var(--panel-2)]" onclick="toggleTrace()">
-             <div class="text-[9px] uppercase text-[var(--text-muted)] font-bold ml-1">SYS_TRACE</div>
-             <div class="text-[var(--text-muted)] text-[8px] mr-1" id="trace-icon">▲</div>
-         </div>
-         <div id="trace-panel-body" class="thin-scroll border-t" style="border-color: var(--border);">
-             <div class="p-2 text-[9px] space-y-1" id="trace-log">
-                <!-- Trace items -->
-             </div>
-         </div>
+      <div class="flex-1 overflow-y-auto thin">
+        <div id="resEmpty" class="px-6 py-10 text-center">
+          <p class="text-[12.5px] leading-relaxed" style="color:var(--slate)">
+            Upload a scene, confirm the slick position, then analyse.<br>
+            Every score arrives with the raw evidence behind it.
+          </p>
+        </div>
+        <div id="resWarn" class="hidden px-4 pt-4"></div>
+        <ul id="vList" class="hidden"></ul>
+        <div id="provBox" class="hidden px-4 py-4"></div>
       </div>
     </aside>
   </div>
-
-  <!-- EVIDENCE CHAIN FOOTER -->
-  <footer id="evidence-chain" class="h-10 shrink-0 border-t flex items-center px-4 hidden" style="border-color: var(--border); background-color: var(--bg-dark);">
-    <div class="text-[9px] font-bold text-[var(--text-muted)] uppercase mr-6">EV_CHAIN</div>
-    <div class="flex items-center gap-4 text-[9px] font-bold">
-      <div class="flex items-center gap-1 cursor-pointer" onclick="focusStage(1)">
-        <span class="text-[var(--text-muted)]">01</span><span id="chain-1" class="text-[var(--text-muted)] uppercase">OBS</span>
-      </div> <span class="text-[var(--border)]">/</span>
-      
-      <div class="flex items-center gap-1 cursor-pointer" onclick="focusStage(2)">
-        <span class="text-[var(--text-muted)]">02</span><span id="chain-2" class="text-[var(--text-muted)] uppercase">DTC</span>
-      </div> <span class="text-[var(--border)]">/</span>
-      
-      <div class="flex items-center gap-1 cursor-pointer" onclick="focusStage(3)">
-        <span class="text-[var(--text-muted)]">03</span><span id="chain-3" class="text-[var(--text-muted)] uppercase">ORG</span>
-      </div> <span class="text-[var(--border)]">/</span>
-      
-      <div class="flex items-center gap-1 cursor-pointer" onclick="focusStage(4)">
-        <span class="text-[var(--text-muted)]">04</span><span id="chain-4" class="text-[var(--text-muted)] uppercase">AIS</span>
-      </div> <span class="text-[var(--border)]">/</span>
-      
-      <div class="flex items-center gap-1 cursor-pointer" onclick="focusStage(5)">
-        <span class="text-[var(--text-muted)]">05</span><span id="chain-5" class="text-[var(--text-muted)] uppercase">RNK</span>
-      </div>
-    </div>
-  </footer>
-
-<!-- TEMPLATES -->
-<template id="tpl-empty">
-  <div class="flex flex-col items-start justify-center h-full">
-    <div class="text-[var(--border)] text-xs mb-2">//////////////////</div>
-    <h2 class="text-xl font-bold uppercase text-white">OCEANIQ_TERMINAL</h2>
-    <p class="text-[10px] text-[var(--text-muted)] uppercase mb-6">Awaiting Input Parameters</p>
-    <button onclick="setState('NEW_INVESTIGATION')" class="text-[10px] font-bold uppercase px-4 py-2 border text-white hover:bg-[var(--panel-2)]" style="border-color: var(--border);">
-      > INIT_NEW
-    </button>
-  </div>
-</template>
-
-<template id="tpl-new">
-  <div>
-    <h2 class="text-xs font-bold mb-4 uppercase text-white">PARAM_INPUT</h2>
-    
-    <div class="space-y-3 mb-6">
-      <div>
-        <label class="block text-[9px] text-[var(--text-muted)] uppercase mb-1">LOC_COORD</label>
-        <div class="flex gap-2">
-          <input type="text" value="6.71" class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
-          <input type="text" value="61.02" class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
-        </div>
-      </div>
-      <div>
-        <label class="block text-[9px] text-[var(--text-muted)] uppercase mb-1">RAD_KM</label>
-        <input type="text" value="10" class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
-      </div>
-      <div>
-        <label class="block text-[9px] text-[var(--text-muted)] uppercase mb-1">TMP_WINDOW</label>
-        <div class="flex gap-2 mb-2">
-          <input type="text" value="2024-01-06" class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
-          <input type="text" value="14:00Z" class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
-        </div>
-        <select class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
-          <option>±12H</option>
-          <option selected>±24H</option>
-          <option>±48H</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="space-y-2">
-      <button onclick="setState('SEARCHING')" class="w-full text-[10px] font-bold uppercase px-3 py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">EXEC_QUERY</button>
-      <button onclick="setState('SEARCHING')" class="w-full text-[10px] font-bold uppercase px-3 py-2 border text-[var(--text-muted)] hover:text-white" style="border-color: var(--border); background-color: var(--bg-dark);">LOAD_HISTORICAL</button>
-    </div>
-  </div>
-</template>
-
-<template id="tpl-searching">
-  <div>
-    <div class="text-[9px] text-[var(--cyan)] uppercase mb-1 font-bold">OP: SRCH_CATALOG</div>
-    
-    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
-      <div class="text-[9px] text-[var(--text-muted)] uppercase mb-2 font-bold border-b pb-1" style="border-color: var(--border);">PARAMS</div>
-      <div class="space-y-1 text-[9px]">
-        <div class="flex justify-between"><span class="text-[var(--text-muted)]">LOC</span> <span>6.71N / 61.02E</span></div>
-        <div class="flex justify-between"><span class="text-[var(--text-muted)]">RAD</span> <span>10KM</span></div>
-        <div class="flex justify-between"><span class="text-[var(--text-muted)]">TMP</span> <span class="text-right">24-01-05T14Z<br>24-01-07T14Z</span></div>
-      </div>
-    </div>
-
-    <div class="space-y-1 text-[9px] uppercase" id="search-log"></div>
-  </div>
-</template>
-
-<template id="tpl-results">
-  <div>
-    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold">OP: RSLT_FOUND</div>
-    
-    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
-      <div class="flex justify-between items-start mb-2">
-        <div class="font-bold text-[var(--cyan)] uppercase">SCN_01</div>
-        <div class="text-[8px] px-1 border" style="border-color: var(--border);">S1_GRD</div>
-      </div>
-      <div class="space-y-1 mb-3 text-[9px]">
-        <div class="flex justify-between"><span class="text-[var(--text-muted)]">ACQ</span> <span>24-01-06T14:12Z</span></div>
-        <div class="flex justify-between"><span class="text-[var(--text-muted)]">COV</span> <span class="text-[var(--green)]">TRUE</span></div>
-      </div>
-      <button onclick="setState('SELECTED')" class="w-full text-[10px] font-bold uppercase py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">LOAD_SCN</button>
-    </div>
-  </div>
-</template>
-
-<template id="tpl-selected">
-  <div class="flex flex-col">
-    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold">OP: SCN_LOADED</div>
-    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
-      <div class="text-[9px] text-[var(--text-muted)] uppercase font-bold mb-2 border-b pb-1" style="border-color: var(--border);">META</div>
-      <div class="space-y-1 text-[9px]">
-        <div class="flex justify-between"><span class="text-[var(--text-muted)]">PLT</span> <span>S1A</span></div>
-        <div class="flex flex-col"><span class="text-[var(--text-muted)] mb-0.5">ID</span> <span class="break-all text-[8px]">S1A_IW_GRDH_1SDV_20240106T1412</span></div>
-      </div>
-    </div>
-    
-    <div class="border p-2 px-3 bg-[rgba(59,140,158,0.05)] border-[var(--cyan)] mb-3">
-      <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-1">EVIDENCE_OUT</div>
-      <div class="text-[10px] font-bold text-white mb-2">SCN_GEOM</div>
-      <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5 mt-2">NEXT_NODE</div>
-      <div class="text-[9px] text-[var(--text-main)]">MDL:U-NET</div>
-    </div>
-
-    <button onclick="setState('ANALYZING')" class="w-full shrink-0 text-[10px] font-bold uppercase py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">EXEC_ANALYZE</button>
-  </div>
-</template>
-
-<template id="tpl-analyzing">
-  <div>
-    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold animate-blink">OP: SCN_ANALYSIS</div>
-    
-    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
-       <div class="grid grid-cols-2 gap-2">
-          <div>
-            <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5">IN</div>
-            <div class="text-[9px] text-[var(--text-main)]">SCN_GEOM</div>
-          </div>
-          <div>
-            <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-0.5">MDL</div>
-            <div class="text-[9px] text-[var(--cyan)]">U-NET[R34]</div>
-          </div>
-       </div>
-       <div class="mt-2 pt-2 border-t" style="border-color: var(--border);">
-            <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5">PROC</div>
-            <div class="text-[9px] text-white">BIN_SEG</div>
-       </div>
-    </div>
-
-    <div class="space-y-1 text-[9px] uppercase" id="analysis-log"></div>
-  </div>
-</template>
-
-<template id="tpl-detected">
-  <div>
-    <div class="text-[9px] text-[var(--amber)] uppercase mb-2 font-bold">OP: DTC_COMPLETE</div>
-    
-    <div class="border p-2 bg-[var(--bg-dark)] mb-3 flex gap-2 items-center" style="border-color: var(--border);">
-       <div class="flex-1 text-center text-[9px] text-[var(--text-muted)]">SAR</div>
-       <div class="text-[var(--border)] font-bold">→</div>
-       <div class="flex-1 text-center text-[9px] text-[var(--text-muted)]">U-NET</div>
-       <div class="text-[var(--border)] font-bold">→</div>
-       <div class="flex-1 text-center text-[9px] text-[var(--amber)] font-bold">MASK</div>
-    </div>
-
-    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
-       <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-2 border-b pb-1" style="border-color: var(--border);">EXTRACT</div>
-       <div class="space-y-1 text-[9px]">
-          <div class="flex justify-between"><span class="text-[var(--text-muted)]">TYP</span> <span>POLY <span class="text-[var(--green)] ml-1">✓</span></span></div>
-          <div class="flex justify-between"><span class="text-[var(--text-muted)]">AREA</span> <span>13.89KM2 <span class="text-[var(--green)] ml-1">✓</span></span></div>
-          <div class="flex justify-between"><span class="text-[var(--text-muted)]">TMP</span> <span>24-01-06T14Z <span class="text-[var(--green)] ml-1">✓</span></span></div>
-       </div>
-    </div>
-    
-    <div class="border p-2 bg-[var(--panel-2)] border-[var(--border)] mb-3">
-      <div class="text-[8px] text-white uppercase font-bold mb-1">HEURISTIC_SCR</div>
-      <p class="text-[9px] text-[var(--text-muted)]">SHP/AREA PASS. RE-TAINED.</p>
-    </div>
-
-    <div class="border p-2 px-3 bg-[rgba(59,140,158,0.05)] border-[var(--cyan)] mb-3">
-      <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-1">EVIDENCE_OUT</div>
-      <div class="text-[10px] font-bold text-[var(--amber)] mb-2">SLICK_POLY+TMP</div>
-      <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5 mt-2">NEXT_NODE</div>
-      <div class="text-[9px] text-[var(--text-main)]">MDL:OPENDRIFT</div>
-    </div>
-
-    <button onclick="setState('DRIFT')" class="w-full text-[10px] font-bold uppercase py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">EXEC_RECON</button>
-  </div>
-</template>
-
-<template id="tpl-drift">
-  <div>
-    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold animate-blink">OP: BCK_RECON</div>
-    
-    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
-       <div class="grid grid-cols-2 gap-2">
-          <div>
-            <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5">IN</div>
-            <div class="text-[9px] text-[var(--amber)]">SLICK_POLY</div>
-          </div>
-          <div>
-            <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-0.5">MDL</div>
-            <div class="text-[9px] text-[var(--cyan)]">BCK_PTCL_DRF</div>
-          </div>
-       </div>
-    </div>
-
-    <div class="border p-2 px-3 bg-[var(--panel-2)] mb-3" style="border-color: var(--border);">
-      <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-2">TRACE_LOG</div>
-      <div class="space-y-1 text-[9px] uppercase" id="drift-progress-log"></div>
-    </div>
-  </div>
-</template>
-
-<template id="tpl-origin">
-  <div>
-    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold">OP: ORG_ESTIMATED</div>
-    
-    <div class="border p-2 bg-[var(--bg-dark)] mb-3 flex justify-between items-center cursor-help hover:border-[var(--cyan)]" style="border-color: var(--border);" onclick="alert('TRACE BCK FROM SLICK TO IDENTIFY CONSISTENT ORG REGION.')">
-      <span class="text-[8px] text-[var(--text-muted)] uppercase">TRACE_LOGIC</span>
-      <span class="text-[8px] text-[var(--cyan)] border px-1 border-[var(--cyan)]">?</span>
-    </div>
-
-    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--cyan);">
-      <div class="space-y-2">
-        <div>
-          <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold">ORG_POLY</div>
-          <div class="text-[10px] mt-0.5 text-white">GEO_5V</div>
-        </div>
-        <div>
-          <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold">ORG_TMP</div>
-          <div class="text-[10px] mt-0.5 text-white" id="origin-window">...</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="border p-2 px-3 bg-[rgba(59,140,158,0.05)] border-[var(--cyan)] mb-3">
-      <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-1">EVIDENCE_OUT</div>
-      <div class="text-[10px] font-bold text-[var(--cyan)] mb-2">ORG_POLY+TMP</div>
-      <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5 mt-2">NEXT_NODE</div>
-      <div class="text-[9px] text-[var(--text-main)]">MDL:AIS_CORR</div>
-    </div>
-
-    <button onclick="setState('AIS')" class="w-full text-[10px] font-bold uppercase py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">EXEC_CORR</button>
-  </div>
-</template>
-
-<template id="tpl-ais">
-  <div>
-    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold animate-blink">OP: AIS_CORR</div>
-    
-    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
-       <div class="grid grid-cols-2 gap-2">
-          <div>
-            <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-0.5">SPA_REG</div>
-            <div class="text-[9px] text-white">ORG_POLY</div>
-          </div>
-          <div>
-            <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-0.5">TMP_WIN</div>
-            <div class="text-[9px] text-white">ORG_TMP</div>
-          </div>
-       </div>
-       <div class="mt-2 pt-2 border-t" style="border-color: var(--border);">
-            <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5">SRC</div>
-            <div class="text-[9px] text-white">GFW</div>
-       </div>
-    </div>
-
-    <div class="border border-[var(--border)] bg-[var(--panel-2)] p-3" id="ais-funnel"></div>
-  </div>
-</template>
-
-<template id="tpl-candidates">
-  <div class="h-full flex flex-col">
-    <div class="flex justify-between items-center mb-3">
-      <div class="text-[9px] text-[var(--cyan)] uppercase font-bold">OP: EV_RANKING</div>
-      <button class="text-[8px] text-[var(--cyan)] border px-1 border-[var(--cyan)]" onclick="alert('SCORED MATHEMATICALLY ON 5 DIMS.')">?</button>
-    </div>
-    
-    <div class="border p-2 bg-[var(--bg-dark)] mb-3 text-center" style="border-color: var(--cyan);">
-      <div class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5">RNK_COMPLETE</div>
-      <div class="text-[10px] text-white font-bold"><span id="cand-count">0</span> CANDIDATES</div>
-    </div>
-    
-    <div id="candidate-list" class="flex-1 overflow-y-auto thin-scroll space-y-2 pb-6"></div>
-  </div>
-</template>
-
-<template id="tpl-detail">
-  <div class="h-full flex flex-col relative">
-    <button onclick="setState('CANDIDATES')" class="absolute top-0 right-0 p-1 text-[9px] text-[var(--text-muted)] hover:text-white uppercase">RET</button>
-    <div class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5">CANDIDATE_01</div>
-    <h2 class="text-[14px] font-bold uppercase text-[var(--amber)] mb-3" id="det-name">...</h2>
-    
-    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3 flex justify-between items-center" style="border-color: var(--amber);">
-      <div class="text-[9px] uppercase text-[var(--text-muted)]">EV_SCORE</div>
-      <div class="text-lg font-bold text-[var(--amber)]"><span id="det-score">0</span><span class="text-[10px] text-[var(--text-muted)] ml-0.5">/100</span></div>
-    </div>
-
-    <div class="text-[8px] text-[var(--text-muted)] uppercase mb-2 font-bold">EV_BREAKDOWN</div>
-    <div id="factor-list" class="flex-1 overflow-y-auto thin-scroll space-y-2 mb-2 pr-1"></div>
-    
-    <div class="p-2 border text-center text-[8px] text-[var(--text-muted)] uppercase mt-auto" style="border-color: var(--border); background-color: var(--bg-dark);">
-      CANDIDATE FOR INVESTIGATION. NOT RESPONSIBILITY DETERM.
-    </div>
-    
-    <button onclick="setState('SUMMARY')" class="mt-3 shrink-0 w-full text-[10px] font-bold uppercase py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">VIEW_SUMM</button>
-  </div>
-</template>
-
-<template id="tpl-summary">
-  <div class="h-full flex flex-col">
-    <div class="text-[9px] text-[var(--cyan)] uppercase mb-3 font-bold">OP: INV_SUMMARY</div>
-    
-    <div class="space-y-1 mb-4 text-[9px] uppercase">
-      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
-        <span class="text-[var(--text-muted)]">SCN_ACQ</span><span class="text-[var(--cyan)]">PASS</span>
-      </div>
-      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
-        <span class="text-[var(--text-muted)]">SLICK_DTC</span><span class="text-[var(--amber)]">PASS</span>
-      </div>
-      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
-        <span class="text-[var(--text-muted)]">ORG_REC</span><span class="text-[var(--cyan)]">PASS</span>
-      </div>
-      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
-        <span class="text-[var(--text-muted)]">TMP_WIN</span><span class="text-[var(--cyan)]">PASS</span>
-      </div>
-      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
-        <span class="text-[var(--text-muted)]">AIS_CORR</span><span class="text-white">PASS</span>
-      </div>
-      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
-        <span class="text-[var(--text-muted)]">EV_RNK</span><span class="text-white">PASS</span>
-      </div>
-    </div>
-    
-    <div class="border p-3 bg-[var(--bg-dark)] mt-auto" style="border-color: var(--amber);">
-      <div class="text-[8px] text-[var(--text-muted)] uppercase mb-1 font-bold">TOP_CANDIDATE</div>
-      <div class="text-lg font-bold text-white uppercase mb-2" id="sum-name">...</div>
-      
-      <div class="flex justify-between items-end mb-2">
-        <div class="text-[8px] text-[var(--text-muted)] uppercase">EV_SCORE</div>
-        <div class="text-[14px] font-bold text-[var(--amber)]"><span id="sum-score">0</span><span class="text-[8px] text-[var(--text-muted)] ml-0.5">/100</span></div>
-      </div>
-      
-      <div class="border-t pt-2 mt-2 text-[8px] text-[var(--text-muted)] uppercase text-center" style="border-color: var(--border);">
-        POTENTIAL CANDIDATE. EVIDENCE CONSISTENCY DOES NOT ESTABLISH RESPONSIBILITY.
-      </div>
-    </div>
-  </div>
-</template>
+</div>
 
 <script>
-  // Payload injected from script
-  const PAYLOAD = {
-  "scenario": "CONTROLLED VALIDATION SCENARIO",
-  "scenario_detail": "Not a real historical incident. Drift physics, spill mask, vessel identities and AIS gaps are real; the scene is relocated to a location with confirmed 2024 vessel traffic because CMEMS forcing for Indian waters is not yet available.",
-  "satellite_image_url": "assets/scene_palsar_0.png",
-  "spill_mask": {
-    "type": "Polygon",
-    "coordinates": [
-      [
-        [
-          61.025215,
-          6.708194999999996
-        ],
-        [
-          61.02361500000001,
-          6.709594999999993
-        ],
-        [
-          61.020965000000004,
-          6.712344999999992
-        ],
-        [
-          61.021015000000006,
-          6.712994999999992
-        ],
-        [
-          61.021515,
-          6.712794999999993
-        ],
-        [
-          61.022415,
-          6.712394999999994
-        ],
-        [
-          61.024015000000006,
-          6.710794999999997
-        ],
-        [
-          61.025215,
-          6.710594999999991
-        ],
-        [
-          61.025215,
-          6.708194999999996
-        ]
-      ]
-    ]
-  },
-  "origin_region": {
-    "polygon": {
-      "type": "Polygon",
-      "coordinates": [
-        [
-          [
-            60.99950015,
-            6.663834549999997
-          ],
-          [
-            61.042899850000005,
-            6.663834549999997
-          ],
-          [
-            61.042899850000005,
-            6.728565449999991
-          ],
-          [
-            60.99950015,
-            6.728565449999991
-          ],
-          [
-            60.99950015,
-            6.663834549999997
-          ]
-        ]
-      ]
-    },
-    "time_window": {
-      "start": "2024-01-02T12:00:00Z",
-      "end": "2024-01-03T00:00:00Z"
-    }
-  },
-  "candidate_ships": [
-    {
-      "id": "422130075",
-      "name": "AL>ARIYA",
-      "track": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            61.0148,
-            6.7186
-          ],
-          [
-            61.0148,
-            6.7186
-          ]
-        ]
-      },
-      "score": 23.7,
-      "factors": [
-        {
-          "label": "Proximity to origin",
-          "score": 94.8,
-          "explanation": "Closest approach to the reconstructed origin was 2.6 km."
-        },
-        {
-          "label": "Timing overlap",
-          "score": 0.0,
-          "explanation": "No overlap: observed 2024-01-06 23:48Z, outside the 2024-01-02 12:00Z to 2024-01-03 00:00Z window."
-        },
-        {
-          "label": "Trajectory consistency",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "Drift agreement",
-          "score": 0.0,
-          "explanation": "Not computable: only one observed position is available (GFW tracks dataset returns 403 for this token)."
-        },
-        {
-          "label": "AIS discrepancy",
-          "score": 0.0,
-          "explanation": "No AIS gap detected inside the window."
-        }
-      ],
-      "flag": "IRN",
-      "type": "fishing"
-    }
-  ],
-  "provenance": {
-    "scenario": "CONTROLLED VALIDATION SCENARIO",
-    "origin": "real OpenDrift backward run",
-    "drift_forcing": "OpenDrift bundled NorKyst sample (western Norway, Nov 2015)",
-    "georeferencing": "Path B - assumed anchor and pixel size, no geotransform",
-    "vessel_tracks": "REAL single observation per vessel (gap-event position). Full tracks unavailable: GET /v3/vessels/{id}/tracks returns HTTP 403 for dataset public-global-all-tracks:latest with this token.",
-    "track_quality": "single_observation - heading and drift agreement not computable",
-    "vessel_identities": "REAL - live GFW query",
-    "transposition": {
-      "applied": true,
-      "delta_lon": 56.29295,
-      "delta_lat": -53.08032,
-      "epoch_shift_to": "2024-01-03T00:00:00Z",
-      "reason": "GFW holds no vessel data for the NorKyst sample domain in 2015; drift shape and scale are real, map position and epoch are moved."
-    },
-    "candidate_source": "loitering events (date range widened to 2024, box unchanged)",
-    "candidate_caveat": "Gap events in the 12h window: 0. The one gap-event object was type=gear (a buoy), not a vessel. The listed vessel comes from a loitering event at the SAME origin box with the date range widened to 2024; it therefore scores 0 on timing overlap, which is why its total is low. The origin box was never widened."
+/* ═══════════════════════════════════════════════════════════════
+   OceanIQ incident console.
+   The backend (POST /api/rank-vessels) takes coordinates, not pixels,
+   so slick screening happens here and only the centroid is sent.
+   ═══════════════════════════════════════════════════════════════ */
+
+const $ = s => document.querySelector(s);
+const API = { health:'api/health', rank:'api/rank-vessels' };
+
+const S = { map:null, imgOverlay:null, maskOverlay:null, pin:null, ring:null,
+            vesselMarkers:[], bitmap:null, detection:null, busy:false };
+
+const fmt = (v,d=2) => (v==null || Number.isNaN(v)) ? null : Number(v).toFixed(d);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const stage = t => { $('#stage').textContent = t; };
+
+/* ══════════ MAP ══════════ */
+function initMap(){
+  const m = L.map('map', { center:[18.45,69.05], zoom:9, zoomControl:false });
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom:16, attribution:'Esri World Light Gray Canvas' }).addTo(m);
+  L.control.zoom({ position:'bottomleft' }).addTo(m);
+  L.control.scale({ imperial:false, position:'bottomleft' }).addTo(m);
+  return m;
+}
+
+function bounds(){
+  const n=+$('#bN').value, s=+$('#bS').value, w=+$('#bW').value, e=+$('#bE').value;
+  if (![n,s,w,e].every(Number.isFinite) || n<=s || e<=w) return null;
+  return L.latLngBounds([[s,w],[n,e]]);
+}
+
+/* ══════════ 1 · UPLOAD ══════════ */
+async function handleFile(file){
+  if (!file || !file.type.startsWith('image/')) return;
+  stage('Reading scene…');
+  try{
+    const url = URL.createObjectURL(file);
+    S.bitmap = await createImageBitmap(file);
+    $('#fileInfo').textContent =
+      `${file.name} · ${S.bitmap.width}×${S.bitmap.height} · ${(file.size/1024).toFixed(0)} KB`;
+    $('#fileInfo').classList.remove('hidden');
+
+    const b = bounds();
+    if (!b){ stage('Scene bounds are invalid'); return; }
+    if (S.imgOverlay) S.map.removeLayer(S.imgOverlay);
+    S.imgOverlay = L.imageOverlay(url, b, { opacity:.92, interactive:false }).addTo(S.map);
+    S.map.fitBounds(b, { padding:[40,40] });
+    detect();
+  }catch(err){
+    console.error(err);
+    stage('Could not read that image');
   }
-};
-  const $ = id => document.getElementById(id);
+}
 
-  // --- Map Engine ---
-  let map;
-  const layers = { slick: null, origin: null, tracks: [] };
+/* ══════════ 2 · CLIENT-SIDE SLICK SCREENING ══════════
+   Threshold to a dark mask, keep the largest connected blob, take its centroid.
+   Deliberately simple and inspectable: a screener, not the trained classifier. */
+function detect(){
+  if (!S.bitmap) return;
+  const th = +$('#th').value;
+  const scale = Math.min(1, 640 / Math.max(S.bitmap.width, S.bitmap.height));
+  const w = Math.max(1, Math.round(S.bitmap.width*scale));
+  const h = Math.max(1, Math.round(S.bitmap.height*scale));
 
-  function initMap() {
-    map = L.map('map', { zoomControl: false }).setView([13.0, 60.0], 4);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 17,
-      attribution: 'ESRI'
-    }).addTo(map);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+  const c = document.createElement('canvas'); c.width=w; c.height=h;
+  const ctx = c.getContext('2d', { willReadFrequently:true });
+  ctx.drawImage(S.bitmap, 0, 0, w, h);
+  const px = ctx.getImageData(0,0,w,h).data;
+
+  const dark = new Uint8Array(w*h);
+  for (let i=0,p=0; p<w*h; i+=4,p++){
+    if (px[i+3] > 20 && (px[i]*0.299 + px[i+1]*0.587 + px[i+2]*0.114) < th) dark[p] = 1;
   }
 
-  function renderGeoJSON(geojson, styleObj, focus = false) {
-    const layer = L.geoJSON(geojson, {
-      style: styleObj,
-      pointToLayer: (f, ll) => L.circleMarker(ll, styleObj)
-    }).addTo(map);
-    if (focus) map.fitBounds(layer.getBounds(), { padding: [30, 30], animate: true });
-    return layer;
+  const q = new Int32Array(w*h);
+  const seen = new Uint8Array(w*h);
+  let best = null;
+  for (let s=0; s<w*h; s++){
+    if (!dark[s] || seen[s]) continue;
+    let head=0, tail=0, sx=0, sy=0, n=0;
+    q[tail++]=s; seen[s]=1;
+    while (head<tail){
+      const p=q[head++], y=(p/w)|0, x=p-y*w;
+      sx+=x; sy+=y; n++;
+      if (x>0   && dark[p-1] && !seen[p-1]){ seen[p-1]=1; q[tail++]=p-1; }
+      if (x<w-1 && dark[p+1] && !seen[p+1]){ seen[p+1]=1; q[tail++]=p+1; }
+      if (y>0   && dark[p-w] && !seen[p-w]){ seen[p-w]=1; q[tail++]=p-w; }
+      if (y<h-1 && dark[p+w] && !seen[p+w]){ seen[p+w]=1; q[tail++]=p+w; }
+    }
+    if (!best || n>best.n) best = { n, cx:sx/n, cy:sy/n, seed:s };
   }
 
-  // --- Utils ---
-  const wait = ms => new Promise(res => setTimeout(res, ms));
-  function getTpl(id) { return $(id) ? $(id).innerHTML : ''; }
-
-  // --- Trace Panel ---
-  function toggleTrace() {
-     const b = $('trace-panel-body');
-     const i = $('trace-icon');
-     if(b.classList.contains('open')) {
-        b.classList.remove('open');
-        i.innerText = '▲';
-     } else {
-        b.classList.add('open');
-        i.innerText = '▼';
-     }
-  }
-  
-  function addTrace(msg) {
-     const now = new Date();
-     const timeStr = now.toISOString().substring(11, 19);
-     const html = `<div class="flex gap-2"><span class="text-[var(--text-muted)]">[${timeStr}]</span> <span class="text-[var(--text-main)]">${msg}</span></div>`;
-     if($('trace-log')) {
-       $('trace-log').innerHTML += html;
-       $('trace-panel-body').scrollTop = $('trace-panel-body').scrollHeight;
-     }
+  if (!best || best.n < 12){
+    S.detection = null;
+    $('#detOut').classList.add('hidden');
+    clearMask(); setRunnable();
+    stage('No slick found at this threshold — try raising it');
+    return;
   }
 
-  function updatePipelineBar(step) {
-     if(!$('global-pipeline')) return;
-     $('global-pipeline').classList.remove('hidden');
-     for(let i=1; i<=8; i++) {
-       const el = $(`pipe-${i}`);
-       if(!el) continue;
-       if (i < step) {
-          el.className = 'text-[var(--green)]';
-          el.innerText = '✓ ' + el.innerText.substring(2);
-       } else if (i === step) {
-          el.className = 'text-[var(--cyan)] font-bold';
-          el.innerText = '● ' + el.innerText.substring(2);
-       } else {
-          el.className = 'text-[var(--text-muted)]';
-          el.innerText = '○ ' + el.innerText.substring(2);
-       }
-     }
+  /* repaint only the winning blob */
+  const mk = document.createElement('canvas'); mk.width=w; mk.height=h;
+  const mctx = mk.getContext('2d');
+  const im = mctx.createImageData(w,h);
+  const seen2 = new Uint8Array(w*h);
+  let head=0, tail=0; q[tail++]=best.seed; seen2[best.seed]=1;
+  while (head<tail){
+    const p=q[head++], y=(p/w)|0, x=p-y*w, o=p*4;
+    im.data[o]=0x0E; im.data[o+1]=0x7A; im.data[o+2]=0x6E; im.data[o+3]=150;
+    if (x>0   && dark[p-1] && !seen2[p-1]){ seen2[p-1]=1; q[tail++]=p-1; }
+    if (x<w-1 && dark[p+1] && !seen2[p+1]){ seen2[p+1]=1; q[tail++]=p+1; }
+    if (y>0   && dark[p-w] && !seen2[p-w]){ seen2[p-w]=1; q[tail++]=p-w; }
+    if (y<h-1 && dark[p+w] && !seen2[p+w]){ seen2[p+w]=1; q[tail++]=p+w; }
   }
+  mctx.putImageData(im,0,0);
 
-  // --- State Machine ---
-  async function setState(state) {
-    const panel = $('panel-content');
-    if(!panel) return;
-    
-    if (state === 'EMPTY') {
-      $('global-pipeline').classList.add('hidden');
-      $('trace-panel').classList.add('hidden');
-      panel.innerHTML = getTpl('tpl-empty');
-      $('header-status').innerText = 'SYS_IDLE';
-    }
-    else if (state === 'NEW_INVESTIGATION') {
-      $('global-pipeline').classList.add('hidden');
-      $('trace-panel').classList.remove('hidden');
-      panel.innerHTML = getTpl('tpl-new');
-      $('header-status').innerText = 'SYS_INPUT';
-      $('btn-reset').classList.remove('hidden');
-      $('trace-log').innerHTML = ''; // reset
-      addTrace('SYS_INIT. AWAITING PARAMS.');
-    }
-    
-    else if (state === 'SEARCHING') {
-      $('header-status').innerText = 'OP_SRCH';
-      updatePipelineBar(1);
-      panel.innerHTML = getTpl('tpl-searching');
-      const log = $('search-log');
-      
-      addTrace('VAL_PARAMS...');
-      log.innerHTML += `<div class="text-[var(--green)]">✓ COORD_OK</div>`; await wait(300);
-      log.innerHTML += `<div class="text-[var(--green)]">✓ WIN_GEN_OK</div>`; await wait(300);
-      
-      addTrace('Q_CATALOGUE [S1]...');
-      log.innerHTML += `<div class="text-[var(--cyan)] mt-2">● FIND_COV</div>`; await wait(400);
-      log.innerHTML += `<div class="text-[var(--text-muted)] pl-2">○ CHK_INT</div>`; await wait(400);
-      
-      addTrace('FOUND: 3_SCN');
-      setState('RESULTS');
-    }
+  const b = bounds(); if (!b) return;
+  const N=b.getNorth(), So=b.getSouth(), W=b.getWest(), E=b.getEast();
+  const lat = N - (best.cy/h)*(N-So);
+  const lon = W + (best.cx/w)*(E-W);
 
-    else if (state === 'RESULTS') {
-      panel.innerHTML = getTpl('tpl-results');
-    }
+  S.detection = { lat, lon, pixels:best.n, coverage:best.n/(w*h) };
+  $('#dPix').textContent = best.n.toLocaleString();
+  $('#dCov').textContent = (S.detection.coverage*100).toFixed(2) + ' %';
+  $('#dLat').textContent = lat.toFixed(4);
+  $('#dLon').textContent = lon.toFixed(4);
+  $('#detOut').classList.remove('hidden');
 
-    else if (state === 'SELECTED') {
-      $('header-status').innerText = 'OP_SCN';
-      panel.innerHTML = getTpl('tpl-selected');
-      $('provenance-banner').classList.remove('hidden');
-      $('provenance-text').innerText = PAYLOAD.scenario;
-      addTrace('LOD_SCN: S1_GRD.');
-      
-      if(layers.slick) map.removeLayer(layers.slick);
-      layers.slick = renderGeoJSON(PAYLOAD.spill_mask, { color: '#ffffff', weight: 1, fillOpacity: 0.1, dashArray: '2,2' }, true);
-    }
+  clearMask();
+  S.maskOverlay = L.imageOverlay(mk.toDataURL(), b, { opacity:.85, interactive:false }).addTo(S.map);
+  placePin(lat, lon);
+  drawRing();
+  setRunnable();
+  stage('Slick screened — confirm the pin, then analyse');
+}
 
-    else if (state === 'ANALYZING') {
-      $('header-status').innerText = 'OP_DTC';
-      updatePipelineBar(2);
-      panel.innerHTML = getTpl('tpl-analyzing');
-      const log = $('analysis-log');
-      
-      addTrace('EXEC_MDL [U-NET]...');
-      log.innerHTML = `<div class="text-[var(--cyan)]">● SEG_CAND</div>
-                       <div class="text-[var(--text-muted)] pl-2">○ PROC_WGT</div>`; 
-      await wait(600);
-      
-      log.innerHTML = `<div class="text-[var(--green)]">✓ SEG_CAND</div>
-                       <div class="text-[var(--cyan)]">● EXT_GEOM</div>`; 
-      addTrace('EXT_GEOM_OK.');
-      await wait(500);
+function clearMask(){ if (S.maskOverlay){ S.map.removeLayer(S.maskOverlay); S.maskOverlay=null; } }
 
-      updatePipelineBar(3);
-      log.innerHTML = `<div class="text-[var(--green)]">✓ SEG_CAND</div>
-                       <div class="text-[var(--green)]">✓ EXT_GEOM</div>
-                       <div class="text-[var(--cyan)]">● HEU_SCR</div>`; 
-      addTrace('HEU_SCR: PASS.');
-      await wait(500);
-      
-      setState('DETECTED');
-    }
+function placePin(lat, lon){
+  if (S.pin){ S.pin.setLatLng([lat,lon]); return; }
+  S.pin = L.marker([lat,lon], { draggable:true, autoPan:true,
+    icon: L.divIcon({ className:'oq-pin', html:'<i></i>', iconSize:[15,15], iconAnchor:[7,7] })
+  }).addTo(S.map);
+  S.pin.on('drag', () => {
+    const p = S.pin.getLatLng();
+    S.detection = { ...(S.detection||{}), lat:p.lat, lon:p.lng };
+    $('#dLat').textContent = p.lat.toFixed(4);
+    $('#dLon').textContent = p.lng.toFixed(4);
+    drawRing();
+  });
+}
 
-    else if (state === 'DETECTED') {
-      panel.innerHTML = getTpl('tpl-detected');
-      $('evidence-chain').classList.remove('hidden');
-      updateChain(2);
-      
-      if(layers.slick) map.removeLayer(layers.slick);
-      layers.slick = renderGeoJSON(PAYLOAD.spill_mask, { color: 'var(--amber)', weight: 1, fillColor: 'var(--amber)', fillOpacity: 0.35 }, true);
-      addTrace('REND_MASK: OK.');
-    }
+function drawRing(){
+  if (!S.detection) return;
+  if (S.ring) S.map.removeLayer(S.ring);
+  S.ring = L.circle([S.detection.lat, S.detection.lon], {
+    radius:(+$('#qRad').value || 50)*1000,
+    color:'#0E7A6E', weight:1.2, dashArray:'4 4', fill:false, interactive:false
+  }).addTo(S.map);
+}
 
-    else if (state === 'DRIFT') {
-      $('header-status').innerText = 'OP_BCK';
-      updatePipelineBar(4);
-      panel.innerHTML = getTpl('tpl-drift');
-      updateChain(3);
-      
-      const log = $('drift-progress-log');
-      log.innerHTML = `<div class="text-[var(--green)]">✓ INIT_200P</div>`; await wait(400);
-      addTrace('INIT_PTCL: OK.');
-      log.innerHTML += `<div class="text-[var(--green)]">✓ APP_FRC_CMEMS</div>`; await wait(400);
-      addTrace('APP_FRC: OK.');
-      log.innerHTML += `<div class="text-[var(--cyan)]">● RUN_SIM</div>`;
-      
-      const bounds = layers.slick.getBounds();
-      map.fitBounds(bounds.pad(1.5), {animate: true, duration: 1});
-      await wait(1000);
-      
-      addTrace('SIM_DONE.');
-      setState('ORIGIN');
-    }
+const setRunnable = () => { $('#btnRun').disabled = !S.detection || S.busy; };
 
-    else if (state === 'ORIGIN') {
-      updatePipelineBar(5);
-      panel.innerHTML = getTpl('tpl-origin');
-      
-      $('origin-window').innerText = PAYLOAD.origin_region.time_window.start.replace('2024-01-','24-01-').replace(' 0','T0').replace(' 1','T1') + 'Z' + '\n' + PAYLOAD.origin_region.time_window.end.replace('2024-01-','24-01-').replace(' 0','T0').replace(' 1','T1') + 'Z';
-      
-      if(layers.origin) map.removeLayer(layers.origin);
-      layers.origin = renderGeoJSON(PAYLOAD.origin_region.polygon, { color: 'var(--cyan)', weight: 1, fillColor: 'var(--cyan)', fillOpacity: 0.15, dashArray: '4,4' }, true);
-      addTrace('REND_ORG: OK.');
-    }
+/* ══════════ 3 · CALL THE BACKEND ══════════ */
+async function analyse(){
+  if (!S.detection || S.busy) return;
+  S.busy = true; setRunnable();
+  $('#runLabel').textContent = 'QUERYING AIS…';
+  $('#runIcon').classList.add('spin');
+  stage('Querying Global Fishing Watch, then ranking…');
 
-    else if (state === 'AIS') {
-      $('header-status').innerText = 'OP_AIS';
-      updatePipelineBar(6);
-      panel.innerHTML = getTpl('tpl-ais');
-      updateChain(4);
-      $('timeline-overlay').classList.remove('hidden');
-      const f = $('ais-funnel');
-      
-      addTrace('Q_GFW...');
-      f.innerHTML = `<div class="text-center text-white mb-2 font-bold text-[10px]">27 VSL_RAW</div>`; await wait(500);
-      f.innerHTML += `<div class="text-center text-[var(--text-muted)] mb-2">↓</div>
-                      <div class="text-center text-[var(--text-muted)] mb-2 text-[9px]">-19 OUT_TMP</div>`; 
-      addTrace('FLT_TMP: -19.');
-      await wait(500);
-      
-      f.innerHTML += `<div class="text-center text-[var(--text-muted)] mb-2">↓</div>
-                      <div class="text-center text-[var(--text-muted)] mb-2 text-[9px]">-7 OUT_SPA</div>`; 
-      addTrace('FLT_SPA: -7.');
-      await wait(500);
-      
-      f.innerHTML += `<div class="text-center text-[var(--text-muted)] mb-2">↓</div>
-                      <div class="text-center text-[var(--cyan)] font-bold text-[12px]">1 CANDIDATE</div>`;
-      addTrace('CORR_DONE.');
-      await wait(800);
-      setState('CANDIDATES');
-    }
+  const tv = $('#qTime').value;
+  const body = {
+    incident_id: 'OCEANIQ-' + new Date().toISOString().slice(0,10),
+    spill_lat: S.detection.lat,
+    spill_lon: S.detection.lon,
+    detected_time_utc: tv ? new Date(tv + 'Z').toISOString() : new Date().toISOString(),
+    radius_km: +$('#qRad').value || 50,
+    window_hours: +$('#qWin').value || 24
+  };
 
-    else if (state === 'CANDIDATES') {
-      $('header-status').innerText = 'OP_RNK';
-      updatePipelineBar(7);
-      panel.innerHTML = getTpl('tpl-candidates');
-      updateChain(5);
-      
-      const cands = PAYLOAD.candidate_ships;
-      $('cand-count').innerText = cands.length;
-      
-      const list = $('candidate-list');
-      list.innerHTML = '';
-      
-      cands.forEach((c, idx) => {
-        const isTop = idx === 0;
-        
-        const t = renderGeoJSON(c.track, { color: '#475569', weight: 1, opacity: 0.6 });
-        layers.tracks.push({ layer: t, id: c.id });
-        
-        const el = document.createElement('div');
-        el.className = `p-2 px-3 border cursor-pointer hover:bg-[var(--panel-2)] bg-[var(--panel-1)]`;
-        el.style.borderColor = isTop ? 'var(--amber)' : 'var(--border)';
-        el.innerHTML = `
-          <div class="flex justify-between items-end">
-            <div>
-              <div class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5">ID_0${idx+1}</div>
-              <div class="font-bold uppercase text-[11px] ${isTop ? 'text-[var(--amber)]' : 'text-white'}">${c.name}</div>
-            </div>
-            <div class="text-right">
-               <div class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5">SCORE</div>
-               <div class="font-bold text-[12px] ${isTop ? 'text-[var(--amber)]' : 'text-white'}">${c.score}</div>
-            </div>
-          </div>
-        `;
-        el.onclick = () => showDetail(c);
-        list.appendChild(el);
+  try{
+    const res = await fetch(API.rank, {
+      method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    render(data);
+    stage(data.ranked_vessels?.length ? 'Ranking complete' : 'No vessels resolved');
+  }catch(err){
+    renderError(err.message);
+    stage('Analysis failed');
+  }finally{
+    S.busy = false; setRunnable();
+    $('#runLabel').textContent = 'ANALYSE INCIDENT';
+    $('#runIcon').classList.remove('spin');
+  }
+}
+
+/* ══════════ 4 · DETAILED OUTPUT ══════════ */
+const band = s => s >= 70 ? { ink:'#0E7A6E', word:'Strong' }
+                : s >= 40 ? { ink:'#9A5B12', word:'Moderate' }
+                :           { ink:'#5C6B78', word:'Weak' };
+
+function renderError(msg){
+  $('#resEmpty').classList.add('hidden');
+  $('#vList').classList.add('hidden');
+  $('#provBox').classList.add('hidden');
+  const w = $('#resWarn'); w.classList.remove('hidden');
+  w.innerHTML = `<div class="note bad">
+    <div class="font-sans text-[10.5px] font-bold tracking-[.1em] uppercase" style="color:var(--red-ink)">Request failed</div>
+    <p class="mt-1 font-mono text-[11.5px] leading-relaxed" style="color:var(--slate)">${esc(msg)}</p></div>`;
+  $('#resSub').textContent = 'The backend returned an error.';
+}
+
+function render(d){
+  $('#resEmpty').classList.add('hidden');
+  clearVesselMarkers();
+
+  const ranked = d.ranked_vessels || [];
+  const cands  = d.candidates || [];
+  const byMmsi = new Map(cands.map(c => [String(c.mmsi), c]));
+
+  $('#resSub').textContent = ranked.length
+    ? `${ranked.length} vessel${ranked.length===1?'':'s'} ranked from ${cands.length} AIS candidate${cands.length===1?'':'s'}.`
+    : 'No vessels resolved in this window.';
+
+  /* completeness: a failed query is not an empty ocean */
+  const warn = $('#resWarn');
+  const failed = d.provenance?.datasets_failed || [];
+  if (d.complete === false || failed.length){
+    warn.classList.remove('hidden');
+    warn.innerHTML = `<div class="note bad">
+      <div class="font-sans text-[10.5px] font-bold tracking-[.1em] uppercase" style="color:var(--red-ink)">Incomplete query</div>
+      <p class="mt-1 text-[12px] leading-relaxed" style="color:var(--slate)">${esc(d.message ||
+        `${failed.length} AIS dataset${failed.length===1?'':'s'} failed. This is not a confirmed absence of traffic.`)}</p>
+      ${failed.length ? `<ul class="mt-1.5 space-y-0.5 font-mono text-[10.5px]" style="color:var(--red-ink)">
+        ${failed.map(f => `<li>· ${esc(f)}</li>`).join('')}</ul>` : ''}</div>`;
+  } else if (!ranked.length){
+    warn.classList.remove('hidden');
+    warn.innerHTML = `<div class="note good">
+      <div class="font-sans text-[10.5px] font-bold tracking-[.1em] uppercase" style="color:var(--teal-ink)">Confirmed clear</div>
+      <p class="mt-1 text-[12px] leading-relaxed" style="color:var(--slate)">${esc(d.message ||
+        'All AIS datasets answered and reported no vessels in range.')}</p></div>`;
+  } else warn.classList.add('hidden');
+
+  /* ranked vessels, each carrying its raw evidence */
+  const list = $('#vList');
+  if (!ranked.length) list.classList.add('hidden');
+  else {
+    list.classList.remove('hidden');
+    list.innerHTML = ranked.map((v,i) => {
+      const c = byMmsi.get(String(v.mmsi)) || {};
+      const bd = band(+v.suspicion_score || 0);
+      const rows = [
+        ['Distance to slick', c.distance_km != null ? `${fmt(c.distance_km)} km` : null],
+        ['Time before detection', c.time_gap_hours != null ? `${fmt(c.time_gap_hours)} h` : null],
+        ['AIS gap', c.ais_gap_hours != null ? `${fmt(c.ais_gap_hours)} h` : null],
+        ['Course deviation', c.course_deviation != null ? `${fmt(c.course_deviation)}°` : null],
+        ['Flag', c.flag], ['Vessel type', c.vessel_type],
+        ['Past violations', c.past_violations?.length ? c.past_violations.join(', ') : null]
+      ];
+      return `<li>
+        <button class="vrow ${i===0?'is-lead':''}" data-mmsi="${esc(v.mmsi)}" aria-expanded="false">
+          <span class="flex items-start gap-3">
+            <span class="shrink-0 flex items-center justify-center w-6 h-6 border font-mono text-[11px] font-semibold num"
+                  style="border-color:${bd.ink};color:${bd.ink}">${i+1}</span>
+            <span class="min-w-0 flex-1">
+              <span class="flex items-baseline justify-between gap-2">
+                <span class="truncate font-display text-[14.5px] font-semibold">${esc(v.vessel || c.vessel_name || 'Unnamed vessel')}</span>
+                <span class="font-display text-[22px] font-bold leading-none num" style="color:${bd.ink}">${esc(v.suspicion_score)}</span>
+              </span>
+              <span class="mt-0.5 flex items-baseline justify-between gap-2 font-mono text-[10.5px]" style="color:var(--slate)">
+                <span class="truncate">MMSI ${esc(v.mmsi)}${c.vessel_type ? ' · ' + esc(c.vessel_type) : ''}</span>
+                <span>${bd.word}</span>
+              </span>
+              <span class="block measure mt-2"><i style="width:${Math.max(0,Math.min(100,+v.suspicion_score||0))}%;background:${bd.ink}"></i></span>
+              <span class="mt-2 block text-[12.5px] leading-relaxed" style="color:var(--slate)">${esc(v.reason)}</span>
+              <span class="fold block"><span class="block">
+                <span class="block hair my-3"></span>
+                <span class="lbl">Evidence on record</span>
+                <dl class="kv mt-2">${rows.map(([k,val]) =>
+                  `<dt>${esc(k)}</dt><dd>${val==null ? '<span class="unavail">unavailable</span>' : esc(val)}</dd>`).join('')}</dl>
+                <span class="mt-2 block text-[11px] leading-relaxed" style="color:var(--slate)">
+                  <em>unavailable</em> means the datum was not returned by the AIS source — not zero,
+                  and not evidence of innocence.
+                </span>
+              </span></span>
+            </span>
+          </span>
+        </button></li>`;
+    }).join('');
+
+    list.querySelectorAll('.vrow').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const open = btn.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', String(open));
+        highlight(btn.dataset.mmsi, open);
       });
-      
-      const group = new L.featureGroup([layers.slick, layers.origin, ...layers.tracks.map(t => t.layer)]);
-      map.fitBounds(group.getBounds(), { padding: [20, 20] });
-      addTrace('RNK_DONE.');
-    }
-
-    else if (state === 'SUMMARY') {
-      $('header-status').innerText = 'OP_SUM';
-      updatePipelineBar(8);
-      panel.innerHTML = getTpl('tpl-summary');
-      if (PAYLOAD.candidate_ships.length > 0) {
-        $('sum-name').innerText = PAYLOAD.candidate_ships[0].name;
-        $('sum-score').innerText = PAYLOAD.candidate_ships[0].score;
-      }
-      $('btn-replay').classList.remove('hidden');
-      addTrace('SUM_GEN.');
-    }
-  }
-
-  function showDetail(c) {
-    const panel = $('panel-content');
-    panel.innerHTML = getTpl('tpl-detail');
-    $('det-name').innerText = c.name;
-    $('det-score').innerText = c.score;
-    addTrace('VIEW_CAND: ' + c.name);
-    
-    const list = $('factor-list');
-    c.factors.forEach(f => {
-      const max = f.max || (f.label.includes('Spati') || f.label.includes('Temp') ? 25 : (f.label.includes('Traj')||f.label.includes('Drift')?20:10));
-      const pct = (f.score / max) * 100;
-      
-      const el = document.createElement('div');
-      el.className = `p-2 px-3 border bg-[var(--panel-2)] cursor-pointer hover:border-[var(--amber)]`;
-      el.style.borderColor = 'var(--border)';
-      
-      let blocks = '';
-      const totalBlocks = 10;
-      const filledBlocks = Math.round((pct/100) * totalBlocks);
-      for(let i=0; i<totalBlocks; i++) {
-         blocks += (i < filledBlocks) ? '█' : '▒';
-      }
-
-      el.innerHTML = `
-        <div class="flex justify-between items-end mb-1">
-           <div class="text-[9px] uppercase font-bold text-white">${f.label}</div>
-           <div class="text-[10px] font-bold text-white">${f.score} <span class="text-[8px] text-[var(--text-muted)] font-normal">/${max}</span></div>
-        </div>
-        <div class="text-[9px] text-[var(--cyan)] mb-1">${blocks}</div>
-        <div class="text-[8px] text-[var(--text-muted)] uppercase">${f.explanation}</div>
-      `;
-      
-      el.onclick = () => {
-         addTrace('INT_FAC: ' + f.label);
-         if(f.label.includes('Tim') || f.label.includes('Temp')) {
-             $('tl-window').classList.remove('hidden');
-             $('tl-spill').classList.remove('hidden');
-             $('tl-ais').classList.remove('hidden');
-         }
-      };
-      list.appendChild(el);
-    });
-    
-    layers.tracks.forEach(t => {
-      if(t.id === c.id) {
-        t.layer.setStyle({ color: '#ffffff', weight: 2, opacity: 1 });
-        t.layer.bringToFront();
-      } else {
-        t.layer.setStyle({ color: '#475569', weight: 1, opacity: 0.3 });
-      }
+      btn.addEventListener('mouseenter', () => highlight(btn.dataset.mmsi, true));
+      btn.addEventListener('mouseleave', () => highlight(null, false));
     });
   }
 
-  function updateChain(step) {
-    for(let i=1; i<=5; i++) {
-      const el = $(`chain-${i}`);
-      if(!el) continue;
-      if (i < step) el.className = 'text-[var(--text-main)] uppercase';
-      else if (i === step) el.className = 'text-[var(--cyan)] uppercase font-bold';
-      else el.className = 'text-[var(--text-muted)] uppercase';
+  /* vessel positions on the chart */
+  ranked.forEach((v,i) => {
+    const c = byMmsi.get(String(v.mmsi));
+    if (!c || !c._position) return;
+    const [lon,lat] = c._position;
+    const mk = L.marker([lat,lon], {
+      icon: L.divIcon({ className:'oq-vessel', html:`<i>${i+1}</i>`, iconSize:[20,20], iconAnchor:[10,10] })
+    }).addTo(S.map);
+    mk.bindTooltip(`${v.vessel || c.vessel_name || 'Vessel'} · ${v.suspicion_score}`,
+                   { direction:'top', className:'oq-tip', opacity:1 });
+    S.vesselMarkers.push({ mmsi:String(v.mmsi), mk });
+  });
+
+  /* provenance */
+  const p = d.provenance || {};
+  const box = $('#provBox');
+  box.classList.remove('hidden');
+  box.innerHTML = `
+    <div class="hair mb-3"></div>
+    <span class="lbl">Provenance</span>
+    <dl class="kv mt-2">
+      <dt>Source</dt><dd>${esc(p.source || '—')}</dd>
+      ${p.window ? `<dt>Window</dt><dd>${esc(p.window.startDate)} → ${esc(p.window.endDate)}</dd>
+        <dt>Search radius</dt><dd>${esc(p.window.radius_km)} km</dd>` : ''}
+      ${p.gfw_ms != null ? `<dt>AIS query</dt><dd>${(p.gfw_ms/1000).toFixed(1)} s</dd>` : ''}
+      ${p.total_ms != null ? `<dt>Total</dt><dd>${(p.total_ms/1000).toFixed(1)} s</dd>` : ''}
+      ${p.hallucinated_vessels_dropped ? `<dt>Invented vessels dropped</dt><dd>${esc(p.hallucinated_vessels_dropped)}</dd>` : ''}
+    </dl>
+    ${p.datasets_queried?.length ? `<span class="lbl mt-3">Datasets answered</span>
+      <dl class="kv mt-1.5">${p.datasets_queried.map(x =>
+        `<dt>${esc(String(x.dataset).replace('public-global-','').replace(':latest',''))}</dt><dd>${esc(x.total)}</dd>`
+      ).join('')}</dl>` : ''}
+    ${p.limitations?.length ? `<span class="lbl mt-3">Known limitations</span>
+      <ul class="mt-1.5 space-y-1.5 text-[11.5px] leading-relaxed" style="color:var(--slate)">
+        ${p.limitations.map(l => `<li>· ${esc(l)}</li>`).join('')}</ul>` : ''}
+    <div class="h-3"></div>`;
+}
+
+function clearVesselMarkers(){
+  S.vesselMarkers.forEach(v => S.map.removeLayer(v.mk));
+  S.vesselMarkers = [];
+}
+const highlight = (mmsi,on) =>
+  S.vesselMarkers.forEach(v => v.mk.getElement()?.classList.toggle('hot', on && v.mmsi === mmsi));
+
+/* ══════════ HEALTH ══════════ */
+async function health(){
+  const el = $('#health');
+  try{
+    const h = await (await fetch(API.health)).json();
+    const miss = [];
+    if (!h.gfw_token)  miss.push('GFW_API_TOKEN');
+    if (!h.gemini_key) miss.push('GEMINI_API_KEY');
+    if (miss.length){
+      el.innerHTML = `<span style="color:var(--red-ink)">● backend up · missing ${miss.join(' + ')}</span>`;
+      el.title = 'Add these to a .env in the repo root, then restart the server.';
+    } else {
+      el.innerHTML = `<span style="color:var(--teal-ink)">● backend up · AIS + ranking ready</span>`;
     }
+  }catch{
+    el.innerHTML = `<span style="color:var(--red-ink)">● backend unreachable — run npm start in server/</span>`;
   }
+}
 
-  function focusStage(step) {
-    if(step === 1 && layers.slick) map.fitBounds(layers.slick.getBounds());
-    if(step === 3 && layers.origin) map.fitBounds(layers.origin.getBounds());
-    if(step === 5) setState('CANDIDATES');
-  }
+/* ══════════ PANEL SIZING ══════════ */
+const SHELL = $('#shell');
+const RAIL = { l:{v:'--rail-l',min:240,max:520,def:310}, r:{v:'--rail-r',min:280,max:640,def:400} };
+const railPx = s => parseFloat(getComputedStyle(SHELL).getPropertyValue(RAIL[s].v)) || 0;
+function setRail(s, px, clamp=true){
+  const c = RAIL[s];
+  const val = clamp ? Math.min(c.max, Math.max(c.min, px)) : Math.max(0, px);
+  SHELL.style.setProperty(c.v, val + 'px');
+  document.querySelector(`.splitter[data-split="${s}"]`)?.setAttribute('aria-valuenow', Math.round(val));
+}
+let queued = false;
+function syncMap(){
+  if (queued) return;
+  queued = true;
+  requestAnimationFrame(() => { queued = false; S.map?.invalidateSize({ animate:false }); });
+}
+document.querySelectorAll('.splitter').forEach(sp => {
+  const side = sp.dataset.split;
+  sp.setAttribute('aria-valuemin', RAIL[side].min);
+  sp.setAttribute('aria-valuemax', RAIL[side].max);
+  sp.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    try{ sp.setPointerCapture(e.pointerId); }catch(_){}
+    sp.classList.add('dragging'); document.body.classList.add('resizing');
+    const x0 = e.clientX, w0 = railPx(side);
+    const move = ev => { setRail(side, side==='l' ? w0+(ev.clientX-x0) : w0-(ev.clientX-x0)); syncMap(); };
+    const up = () => {
+      sp.classList.remove('dragging'); document.body.classList.remove('resizing');
+      sp.removeEventListener('pointermove', move);
+      sp.removeEventListener('pointerup', up);
+      expanded = false; $('#btnExpand').setAttribute('aria-pressed','false');
+      syncMap();
+    };
+    sp.addEventListener('pointermove', move);
+    sp.addEventListener('pointerup', up);
+  });
+  sp.addEventListener('dblclick', () => { setRail(side, RAIL[side].def); syncMap(); });
+  sp.addEventListener('keydown', e => {
+    const step = e.shiftKey ? 48 : 16;
+    let d = 0;
+    if (e.key === 'ArrowLeft')  d = side==='l' ? -step :  step;
+    if (e.key === 'ArrowRight') d = side==='l' ?  step : -step;
+    if (e.key === 'Home'){ setRail(side, RAIL[side].def); syncMap(); e.preventDefault(); return; }
+    if (!d) return;
+    e.preventDefault(); setRail(side, railPx(side)+d); syncMap();
+  });
+});
+let expanded = false, stash = null;
+function toggleExpand(){
+  expanded = !expanded;
+  if (expanded){ stash = { l:railPx('l'), r:railPx('r') }; setRail('l',0,false); setRail('r',0,false); }
+  else if (stash){ setRail('l',stash.l); setRail('r',stash.r); }
+  $('#btnExpand').setAttribute('aria-pressed', String(expanded));
+  $('#btnExpand').setAttribute('aria-label', expanded ? 'Restore panels' : 'Expand map');
+  syncMap();
+}
 
-  if($('btn-reset')) $('btn-reset').onclick = () => { window.location.reload(); };
-  if($('btn-replay')) $('btn-replay').onclick = () => {
-    $('evidence-chain').classList.add('hidden');
-    $('provenance-banner').classList.add('hidden');
-    $('timeline-overlay').classList.add('hidden');
-    if(layers.slick) map.removeLayer(layers.slick);
-    if(layers.origin) map.removeLayer(layers.origin);
-    layers.tracks.forEach(t => map.removeLayer(t.layer));
-    layers.tracks = [];
-    $('btn-replay').classList.add('hidden');
-    setState('NEW_INVESTIGATION');
-  };
+/* ══════════ WIRING ══════════ */
+$('#drop').addEventListener('click', () => $('#file').click());
+$('#drop').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); $('#file').click(); }
+});
+$('#file').addEventListener('change', e => handleFile(e.target.files[0]));
+['dragenter','dragover'].forEach(ev => $('#drop').addEventListener(ev, e => {
+  e.preventDefault(); $('#drop').classList.add('over');
+}));
+['dragleave','drop'].forEach(ev => $('#drop').addEventListener(ev, e => {
+  e.preventDefault(); $('#drop').classList.remove('over');
+}));
+$('#drop').addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
 
-  window.onload = () => {
-    initMap();
-    setState('EMPTY');
-  };
+$('#th').addEventListener('input', () => { $('#thVal').textContent = $('#th').value; detect(); });
+['bN','bS','bW','bE'].forEach(id => $('#'+id).addEventListener('change', () => {
+  if (!S.bitmap) return;
+  const b = bounds();
+  if (b && S.imgOverlay){ S.imgOverlay.setBounds(b); S.map.fitBounds(b, { padding:[40,40] }); }
+  detect();
+}));
+$('#qRad').addEventListener('input', drawRing);
+$('#btnRun').addEventListener('click', analyse);
+$('#btnExpand').addEventListener('click', toggleExpand);
+window.addEventListener('resize', syncMap);
+document.addEventListener('keydown', e => {
+  if (e.target === document.body && e.key.toLowerCase() === 'm'){ e.preventDefault(); toggleExpand(); }
+});
+
+S.map = initMap();
+health();
 </script>
 </body>
 </html>
