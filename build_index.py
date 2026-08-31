@@ -1,0 +1,885 @@
+import json
+
+def build():
+    with open('golden_case/expected_output.json', 'r') as f:
+        payload_data = f.read()
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OCEANIQ — Maritime Spill Intelligence</title>
+<link rel="stylesheet" href="lib/leaflet.css" />
+<link rel="stylesheet" href="lib/fonts.css" />
+<script src="lib/tailwind.js"></script>
+<script src="lib/leaflet.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+
+  :root {{
+    --bg-dark: #02060d;
+    --panel-1: #08101a;
+    --panel-2: #0c1825;
+    --border: #1a293b;
+    --amber: #d97725;
+    --cyan: #3b8c9e;
+    --green: #449c71;
+    --text-main: #d1d5db;
+    --text-muted: #6b7280;
+  }}
+
+  body {{
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    overflow: hidden;
+  }}
+
+  /* Scrollbars */
+  .thin-scroll::-webkit-scrollbar {{ width: 4px; }}
+  .thin-scroll::-webkit-scrollbar-track {{ background: transparent; }}
+  .thin-scroll::-webkit-scrollbar-thumb {{ background: var(--border); }}
+  .thin-scroll::-webkit-scrollbar-thumb:hover {{ background: #2d4564; }}
+
+  /* Map styling */
+  .leaflet-container {{ background-color: var(--bg-dark); font-family: 'IBM Plex Mono', monospace; }}
+  .leaflet-control-zoom {{ border: 1px solid var(--border) !important; border-radius: 0 !important; }}
+  .leaflet-control-zoom a {{ background: var(--panel-1) !important; color: var(--text-main) !important; border-bottom: 1px solid var(--border) !important; border-radius: 0 !important; }}
+  .leaflet-control-zoom a:hover {{ background: var(--panel-2) !important; }}
+  .leaflet-control-attribution {{ background: rgba(8, 16, 26, 0.9) !important; color: var(--text-muted) !important; font-size: 9px !important; text-transform: uppercase; }}
+  .leaflet-control-attribution a {{ color: var(--cyan) !important; }}
+
+  /* Custom Layers */
+  .spill-mask {{ fill: var(--amber); fill-opacity: 0.35; color: var(--amber); weight: 1; }}
+  .origin-region {{ fill: var(--cyan); fill-opacity: 0.15; color: var(--cyan); weight: 1; dashArray: 4,4; }}
+  .drift-particle {{ fill: #94a3b8; fill-opacity: 0.8; color: transparent; radius: 1; }}
+  .vessel-track {{ color: #475569; weight: 1; opacity: 0.6; }}
+  .vessel-track.active {{ color: #ffffff; weight: 2; opacity: 1; }}
+
+  /* Typography dense reset */
+  h1, h2, h3, div, span {{ letter-spacing: -0.02em; }}
+  .uppercase {{ letter-spacing: 0.05em; }}
+
+  /* Animations */
+  @keyframes blink {{ 0%, 100% {{ opacity: 1; }} 50% {{ opacity: 0.3; }} }}
+  .animate-blink {{ animation: blink 1.5s infinite; }}
+  
+  /* Trace Panel */
+  #trace-panel-body {{
+     max-height: 0; overflow: hidden; transition: max-height 0.1s ease-out;
+  }}
+  #trace-panel-body.open {{ max-height: 200px; overflow-y: auto; }}
+</style>
+</head>
+<body class="h-screen w-screen flex flex-col antialiased text-[11px] leading-tight">
+
+  <!-- HEADER -->
+  <header class="h-[40px] shrink-0 border-b flex items-center justify-between px-4" style="border-color: var(--border); background-color: var(--panel-1);">
+    <div class="flex items-center gap-3">
+      <div class="font-bold text-sm text-white">OCEANIQ</div>
+      <div class="h-3 w-px bg-[var(--border)]"></div>
+      <div class="text-[9px] text-[var(--text-muted)] uppercase" id="header-status">SYS_IDLE</div>
+    </div>
+    <div class="flex gap-3">
+      <button id="btn-reset" class="hidden text-[9px] uppercase text-[var(--text-muted)] hover:text-white transition-none">RST</button>
+      <button id="btn-replay" class="hidden text-[9px] uppercase px-2 py-0.5 border text-[var(--cyan)] border-[var(--cyan)] hover:bg-[var(--cyan)] hover:text-[var(--bg-dark)] transition-none">EXEC_REPLAY</button>
+    </div>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden min-h-0 relative">
+    
+    <!-- MAP AREA -->
+    <main class="flex-[2] relative z-0">
+      <div id="map" class="absolute inset-0"></div>
+      
+      <!-- DATA PROVENANCE -->
+      <div id="provenance-banner" class="absolute top-2 left-2 z-[500] hidden">
+        <div class="bg-[rgba(217,119,37,0.15)] border border-[var(--amber)] px-3 py-1.5 flex items-center gap-2 backdrop-blur-sm">
+          <span class="inline-block w-1.5 h-1.5 bg-[var(--amber)] animate-blink"></span>
+          <span class="text-[9px] uppercase font-bold" style="color: var(--amber);" id="provenance-text">CTRL_VAL_SCENARIO</span>
+        </div>
+      </div>
+      
+      <!-- TIMELINE (Bottom of map) -->
+      <div id="timeline-overlay" class="absolute bottom-2 left-2 right-2 z-[500] hidden">
+         <div class="bg-[var(--panel-1)] border border-[var(--border)] p-2 flex flex-col opacity-95">
+             <div class="text-[8px] text-[var(--text-muted)] uppercase mb-1">TMP_AXIS</div>
+             <div class="relative h-4 flex items-center">
+                 <div class="absolute inset-x-0 h-px bg-[var(--border)]"></div>
+                 <div id="tl-window" class="absolute h-1.5 bg-[var(--cyan)] opacity-50 hidden" style="left: 20%; width: 50%;"></div>
+                 <div id="tl-spill" class="absolute w-1.5 h-1.5 bg-[var(--amber)] hidden" style="left: 10%;"></div>
+                 <div id="tl-ais" class="absolute w-1.5 h-1.5 bg-white hidden" style="left: 60%;"></div>
+             </div>
+             <div class="flex justify-between text-[7px] text-[var(--text-muted)] mt-0.5">
+                 <span>2024-01-02T00:00Z</span>
+                 <span>2024-01-04T00:00Z</span>
+             </div>
+         </div>
+      </div>
+    </main>
+
+    <!-- INVESTIGATION PANEL (Right) -->
+    <aside class="flex-1 max-w-[400px] border-l flex flex-col z-10" style="border-color: var(--border); background-color: var(--panel-1);">
+      
+      <!-- GLOBAL PIPELINE BAR -->
+      <div id="global-pipeline" class="border-b p-2 flex justify-between items-center bg-[var(--bg-dark)] hidden" style="border-color: var(--border);">
+         <div class="text-[8px] uppercase flex items-center gap-1 flex-wrap">
+             <span id="pipe-1" class="text-[var(--text-muted)]">○ SCN</span> <span class="text-[var(--border)]">→</span>
+             <span id="pipe-2" class="text-[var(--text-muted)]">○ DTC</span> <span class="text-[var(--border)]">→</span>
+             <span id="pipe-3" class="text-[var(--text-muted)]">○ SCR</span> <span class="text-[var(--border)]">→</span>
+             <span id="pipe-4" class="text-[var(--text-muted)]">○ BCK</span> <span class="text-[var(--border)]">→</span>
+             <span id="pipe-5" class="text-[var(--text-muted)]">○ ORG</span> <span class="text-[var(--border)]">→</span>
+             <span id="pipe-6" class="text-[var(--text-muted)]">○ AIS</span> <span class="text-[var(--border)]">→</span>
+             <span id="pipe-7" class="text-[var(--text-muted)]">○ RNK</span> <span class="text-[var(--border)]">→</span>
+             <span id="pipe-8" class="text-[var(--text-muted)]">○ EXP</span>
+         </div>
+      </div>
+
+      <div id="panel-content" class="flex-1 overflow-y-auto thin-scroll p-3 pb-20">
+        <!-- Content swapped via JS -->
+      </div>
+      
+      <!-- SYSTEM TRACE PANEL -->
+      <div id="trace-panel" class="absolute bottom-0 w-full border-t bg-[var(--panel-1)] hidden" style="border-color: var(--border);">
+         <div class="p-1.5 flex justify-between items-center cursor-pointer hover:bg-[var(--panel-2)]" onclick="toggleTrace()">
+             <div class="text-[9px] uppercase text-[var(--text-muted)] font-bold ml-1">SYS_TRACE</div>
+             <div class="text-[var(--text-muted)] text-[8px] mr-1" id="trace-icon">▲</div>
+         </div>
+         <div id="trace-panel-body" class="thin-scroll border-t" style="border-color: var(--border);">
+             <div class="p-2 text-[9px] space-y-1" id="trace-log">
+                <!-- Trace items -->
+             </div>
+         </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- EVIDENCE CHAIN FOOTER -->
+  <footer id="evidence-chain" class="h-10 shrink-0 border-t flex items-center px-4 hidden" style="border-color: var(--border); background-color: var(--bg-dark);">
+    <div class="text-[9px] font-bold text-[var(--text-muted)] uppercase mr-6">EV_CHAIN</div>
+    <div class="flex items-center gap-4 text-[9px] font-bold">
+      <div class="flex items-center gap-1 cursor-pointer" onclick="focusStage(1)">
+        <span class="text-[var(--text-muted)]">01</span><span id="chain-1" class="text-[var(--text-muted)] uppercase">OBS</span>
+      </div> <span class="text-[var(--border)]">/</span>
+      
+      <div class="flex items-center gap-1 cursor-pointer" onclick="focusStage(2)">
+        <span class="text-[var(--text-muted)]">02</span><span id="chain-2" class="text-[var(--text-muted)] uppercase">DTC</span>
+      </div> <span class="text-[var(--border)]">/</span>
+      
+      <div class="flex items-center gap-1 cursor-pointer" onclick="focusStage(3)">
+        <span class="text-[var(--text-muted)]">03</span><span id="chain-3" class="text-[var(--text-muted)] uppercase">ORG</span>
+      </div> <span class="text-[var(--border)]">/</span>
+      
+      <div class="flex items-center gap-1 cursor-pointer" onclick="focusStage(4)">
+        <span class="text-[var(--text-muted)]">04</span><span id="chain-4" class="text-[var(--text-muted)] uppercase">AIS</span>
+      </div> <span class="text-[var(--border)]">/</span>
+      
+      <div class="flex items-center gap-1 cursor-pointer" onclick="focusStage(5)">
+        <span class="text-[var(--text-muted)]">05</span><span id="chain-5" class="text-[var(--text-muted)] uppercase">RNK</span>
+      </div>
+    </div>
+  </footer>
+
+<!-- TEMPLATES -->
+<template id="tpl-empty">
+  <div class="flex flex-col items-start justify-center h-full">
+    <div class="text-[var(--border)] text-xs mb-2">//////////////////</div>
+    <h2 class="text-xl font-bold uppercase text-white">OCEANIQ_TERMINAL</h2>
+    <p class="text-[10px] text-[var(--text-muted)] uppercase mb-6">Awaiting Input Parameters</p>
+    <button onclick="setState('NEW_INVESTIGATION')" class="text-[10px] font-bold uppercase px-4 py-2 border text-white hover:bg-[var(--panel-2)]" style="border-color: var(--border);">
+      > INIT_NEW
+    </button>
+  </div>
+</template>
+
+<template id="tpl-new">
+  <div>
+    <h2 class="text-xs font-bold mb-4 uppercase text-white">PARAM_INPUT</h2>
+    
+    <div class="space-y-3 mb-6">
+      <div>
+        <label class="block text-[9px] text-[var(--text-muted)] uppercase mb-1">LOC_COORD</label>
+        <div class="flex gap-2">
+          <input type="text" value="6.71" class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
+          <input type="text" value="61.02" class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
+        </div>
+      </div>
+      <div>
+        <label class="block text-[9px] text-[var(--text-muted)] uppercase mb-1">RAD_KM</label>
+        <input type="text" value="10" class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
+      </div>
+      <div>
+        <label class="block text-[9px] text-[var(--text-muted)] uppercase mb-1">TMP_WINDOW</label>
+        <div class="flex gap-2 mb-2">
+          <input type="text" value="2024-01-06" class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
+          <input type="text" value="14:00Z" class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
+        </div>
+        <select class="w-full bg-[var(--bg-dark)] border px-2 py-1.5 text-[10px] text-white focus:border-[var(--cyan)] outline-none" style="border-color: var(--border);">
+          <option>±12H</option>
+          <option selected>±24H</option>
+          <option>±48H</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="space-y-2">
+      <button onclick="setState('SEARCHING')" class="w-full text-[10px] font-bold uppercase px-3 py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">EXEC_QUERY</button>
+      <button onclick="setState('SEARCHING')" class="w-full text-[10px] font-bold uppercase px-3 py-2 border text-[var(--text-muted)] hover:text-white" style="border-color: var(--border); background-color: var(--bg-dark);">LOAD_HISTORICAL</button>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-searching">
+  <div>
+    <div class="text-[9px] text-[var(--cyan)] uppercase mb-1 font-bold">OP: SRCH_CATALOG</div>
+    
+    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
+      <div class="text-[9px] text-[var(--text-muted)] uppercase mb-2 font-bold border-b pb-1" style="border-color: var(--border);">PARAMS</div>
+      <div class="space-y-1 text-[9px]">
+        <div class="flex justify-between"><span class="text-[var(--text-muted)]">LOC</span> <span>6.71N / 61.02E</span></div>
+        <div class="flex justify-between"><span class="text-[var(--text-muted)]">RAD</span> <span>10KM</span></div>
+        <div class="flex justify-between"><span class="text-[var(--text-muted)]">TMP</span> <span class="text-right">24-01-05T14Z<br>24-01-07T14Z</span></div>
+      </div>
+    </div>
+
+    <div class="space-y-1 text-[9px] uppercase" id="search-log"></div>
+  </div>
+</template>
+
+<template id="tpl-results">
+  <div>
+    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold">OP: RSLT_FOUND</div>
+    
+    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
+      <div class="flex justify-between items-start mb-2">
+        <div class="font-bold text-[var(--cyan)] uppercase">SCN_01</div>
+        <div class="text-[8px] px-1 border" style="border-color: var(--border);">S1_GRD</div>
+      </div>
+      <div class="space-y-1 mb-3 text-[9px]">
+        <div class="flex justify-between"><span class="text-[var(--text-muted)]">ACQ</span> <span>24-01-06T14:12Z</span></div>
+        <div class="flex justify-between"><span class="text-[var(--text-muted)]">COV</span> <span class="text-[var(--green)]">TRUE</span></div>
+      </div>
+      <button onclick="setState('SELECTED')" class="w-full text-[10px] font-bold uppercase py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">LOAD_SCN</button>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-selected">
+  <div class="flex flex-col">
+    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold">OP: SCN_LOADED</div>
+    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
+      <div class="text-[9px] text-[var(--text-muted)] uppercase font-bold mb-2 border-b pb-1" style="border-color: var(--border);">META</div>
+      <div class="space-y-1 text-[9px]">
+        <div class="flex justify-between"><span class="text-[var(--text-muted)]">PLT</span> <span>S1A</span></div>
+        <div class="flex flex-col"><span class="text-[var(--text-muted)] mb-0.5">ID</span> <span class="break-all text-[8px]">S1A_IW_GRDH_1SDV_20240106T1412</span></div>
+      </div>
+    </div>
+    
+    <div class="border p-2 px-3 bg-[rgba(59,140,158,0.05)] border-[var(--cyan)] mb-3">
+      <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-1">EVIDENCE_OUT</div>
+      <div class="text-[10px] font-bold text-white mb-2">SCN_GEOM</div>
+      <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5 mt-2">NEXT_NODE</div>
+      <div class="text-[9px] text-[var(--text-main)]">MDL:U-NET</div>
+    </div>
+
+    <button onclick="setState('ANALYZING')" class="w-full shrink-0 text-[10px] font-bold uppercase py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">EXEC_ANALYZE</button>
+  </div>
+</template>
+
+<template id="tpl-analyzing">
+  <div>
+    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold animate-blink">OP: SCN_ANALYSIS</div>
+    
+    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
+       <div class="grid grid-cols-2 gap-2">
+          <div>
+            <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5">IN</div>
+            <div class="text-[9px] text-[var(--text-main)]">SCN_GEOM</div>
+          </div>
+          <div>
+            <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-0.5">MDL</div>
+            <div class="text-[9px] text-[var(--cyan)]">U-NET[R34]</div>
+          </div>
+       </div>
+       <div class="mt-2 pt-2 border-t" style="border-color: var(--border);">
+            <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5">PROC</div>
+            <div class="text-[9px] text-white">BIN_SEG</div>
+       </div>
+    </div>
+
+    <div class="space-y-1 text-[9px] uppercase" id="analysis-log"></div>
+  </div>
+</template>
+
+<template id="tpl-detected">
+  <div>
+    <div class="text-[9px] text-[var(--amber)] uppercase mb-2 font-bold">OP: DTC_COMPLETE</div>
+    
+    <div class="border p-2 bg-[var(--bg-dark)] mb-3 flex gap-2 items-center" style="border-color: var(--border);">
+       <div class="flex-1 text-center text-[9px] text-[var(--text-muted)]">SAR</div>
+       <div class="text-[var(--border)] font-bold">→</div>
+       <div class="flex-1 text-center text-[9px] text-[var(--text-muted)]">U-NET</div>
+       <div class="text-[var(--border)] font-bold">→</div>
+       <div class="flex-1 text-center text-[9px] text-[var(--amber)] font-bold">MASK</div>
+    </div>
+
+    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
+       <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-2 border-b pb-1" style="border-color: var(--border);">EXTRACT</div>
+       <div class="space-y-1 text-[9px]">
+          <div class="flex justify-between"><span class="text-[var(--text-muted)]">TYP</span> <span>POLY <span class="text-[var(--green)] ml-1">✓</span></span></div>
+          <div class="flex justify-between"><span class="text-[var(--text-muted)]">AREA</span> <span>13.89KM2 <span class="text-[var(--green)] ml-1">✓</span></span></div>
+          <div class="flex justify-between"><span class="text-[var(--text-muted)]">TMP</span> <span>24-01-06T14Z <span class="text-[var(--green)] ml-1">✓</span></span></div>
+       </div>
+    </div>
+    
+    <div class="border p-2 bg-[var(--panel-2)] border-[var(--border)] mb-3">
+      <div class="text-[8px] text-white uppercase font-bold mb-1">HEURISTIC_SCR</div>
+      <p class="text-[9px] text-[var(--text-muted)]">SHP/AREA PASS. RE-TAINED.</p>
+    </div>
+
+    <div class="border p-2 px-3 bg-[rgba(59,140,158,0.05)] border-[var(--cyan)] mb-3">
+      <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-1">EVIDENCE_OUT</div>
+      <div class="text-[10px] font-bold text-[var(--amber)] mb-2">SLICK_POLY+TMP</div>
+      <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5 mt-2">NEXT_NODE</div>
+      <div class="text-[9px] text-[var(--text-main)]">MDL:OPENDRIFT</div>
+    </div>
+
+    <button onclick="setState('DRIFT')" class="w-full text-[10px] font-bold uppercase py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">EXEC_RECON</button>
+  </div>
+</template>
+
+<template id="tpl-drift">
+  <div>
+    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold animate-blink">OP: BCK_RECON</div>
+    
+    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
+       <div class="grid grid-cols-2 gap-2">
+          <div>
+            <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5">IN</div>
+            <div class="text-[9px] text-[var(--amber)]">SLICK_POLY</div>
+          </div>
+          <div>
+            <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-0.5">MDL</div>
+            <div class="text-[9px] text-[var(--cyan)]">BCK_PTCL_DRF</div>
+          </div>
+       </div>
+    </div>
+
+    <div class="border p-2 px-3 bg-[var(--panel-2)] mb-3" style="border-color: var(--border);">
+      <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-2">TRACE_LOG</div>
+      <div class="space-y-1 text-[9px] uppercase" id="drift-progress-log"></div>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-origin">
+  <div>
+    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold">OP: ORG_ESTIMATED</div>
+    
+    <div class="border p-2 bg-[var(--bg-dark)] mb-3 flex justify-between items-center cursor-help hover:border-[var(--cyan)]" style="border-color: var(--border);" onclick="alert('TRACE BCK FROM SLICK TO IDENTIFY CONSISTENT ORG REGION.')">
+      <span class="text-[8px] text-[var(--text-muted)] uppercase">TRACE_LOGIC</span>
+      <span class="text-[8px] text-[var(--cyan)] border px-1 border-[var(--cyan)]">?</span>
+    </div>
+
+    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--cyan);">
+      <div class="space-y-2">
+        <div>
+          <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold">ORG_POLY</div>
+          <div class="text-[10px] mt-0.5 text-white">GEO_5V</div>
+        </div>
+        <div>
+          <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold">ORG_TMP</div>
+          <div class="text-[10px] mt-0.5 text-white" id="origin-window">...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="border p-2 px-3 bg-[rgba(59,140,158,0.05)] border-[var(--cyan)] mb-3">
+      <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-1">EVIDENCE_OUT</div>
+      <div class="text-[10px] font-bold text-[var(--cyan)] mb-2">ORG_POLY+TMP</div>
+      <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5 mt-2">NEXT_NODE</div>
+      <div class="text-[9px] text-[var(--text-main)]">MDL:AIS_CORR</div>
+    </div>
+
+    <button onclick="setState('AIS')" class="w-full text-[10px] font-bold uppercase py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">EXEC_CORR</button>
+  </div>
+</template>
+
+<template id="tpl-ais">
+  <div>
+    <div class="text-[9px] text-[var(--cyan)] uppercase mb-2 font-bold animate-blink">OP: AIS_CORR</div>
+    
+    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3" style="border-color: var(--border);">
+       <div class="grid grid-cols-2 gap-2">
+          <div>
+            <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-0.5">SPA_REG</div>
+            <div class="text-[9px] text-white">ORG_POLY</div>
+          </div>
+          <div>
+            <div class="text-[8px] text-[var(--cyan)] uppercase font-bold mb-0.5">TMP_WIN</div>
+            <div class="text-[9px] text-white">ORG_TMP</div>
+          </div>
+       </div>
+       <div class="mt-2 pt-2 border-t" style="border-color: var(--border);">
+            <div class="text-[8px] text-[var(--text-muted)] uppercase font-bold mb-0.5">SRC</div>
+            <div class="text-[9px] text-white">GFW</div>
+       </div>
+    </div>
+
+    <div class="border border-[var(--border)] bg-[var(--panel-2)] p-3" id="ais-funnel"></div>
+  </div>
+</template>
+
+<template id="tpl-candidates">
+  <div class="h-full flex flex-col">
+    <div class="flex justify-between items-center mb-3">
+      <div class="text-[9px] text-[var(--cyan)] uppercase font-bold">OP: EV_RANKING</div>
+      <button class="text-[8px] text-[var(--cyan)] border px-1 border-[var(--cyan)]" onclick="alert('SCORED MATHEMATICALLY ON 5 DIMS.')">?</button>
+    </div>
+    
+    <div class="border p-2 bg-[var(--bg-dark)] mb-3 text-center" style="border-color: var(--cyan);">
+      <div class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5">RNK_COMPLETE</div>
+      <div class="text-[10px] text-white font-bold"><span id="cand-count">0</span> CANDIDATES</div>
+    </div>
+    
+    <div id="candidate-list" class="flex-1 overflow-y-auto thin-scroll space-y-2 pb-6"></div>
+  </div>
+</template>
+
+<template id="tpl-detail">
+  <div class="h-full flex flex-col relative">
+    <button onclick="setState('CANDIDATES')" class="absolute top-0 right-0 p-1 text-[9px] text-[var(--text-muted)] hover:text-white uppercase">RET</button>
+    <div class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5">CANDIDATE_01</div>
+    <h2 class="text-[14px] font-bold uppercase text-[var(--amber)] mb-3" id="det-name">...</h2>
+    
+    <div class="border p-2 px-3 bg-[var(--bg-dark)] mb-3 flex justify-between items-center" style="border-color: var(--amber);">
+      <div class="text-[9px] uppercase text-[var(--text-muted)]">EV_SCORE</div>
+      <div class="text-lg font-bold text-[var(--amber)]"><span id="det-score">0</span><span class="text-[10px] text-[var(--text-muted)] ml-0.5">/100</span></div>
+    </div>
+
+    <div class="text-[8px] text-[var(--text-muted)] uppercase mb-2 font-bold">EV_BREAKDOWN</div>
+    <div id="factor-list" class="flex-1 overflow-y-auto thin-scroll space-y-2 mb-2 pr-1"></div>
+    
+    <div class="p-2 border text-center text-[8px] text-[var(--text-muted)] uppercase mt-auto" style="border-color: var(--border); background-color: var(--bg-dark);">
+      CANDIDATE FOR INVESTIGATION. NOT RESPONSIBILITY DETERM.
+    </div>
+    
+    <button onclick="setState('SUMMARY')" class="mt-3 shrink-0 w-full text-[10px] font-bold uppercase py-2 border text-[var(--bg-dark)] hover:opacity-90" style="border-color: var(--cyan); background-color: var(--cyan);">VIEW_SUMM</button>
+  </div>
+</template>
+
+<template id="tpl-summary">
+  <div class="h-full flex flex-col">
+    <div class="text-[9px] text-[var(--cyan)] uppercase mb-3 font-bold">OP: INV_SUMMARY</div>
+    
+    <div class="space-y-1 mb-4 text-[9px] uppercase">
+      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
+        <span class="text-[var(--text-muted)]">SCN_ACQ</span><span class="text-[var(--cyan)]">PASS</span>
+      </div>
+      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
+        <span class="text-[var(--text-muted)]">SLICK_DTC</span><span class="text-[var(--amber)]">PASS</span>
+      </div>
+      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
+        <span class="text-[var(--text-muted)]">ORG_REC</span><span class="text-[var(--cyan)]">PASS</span>
+      </div>
+      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
+        <span class="text-[var(--text-muted)]">TMP_WIN</span><span class="text-[var(--cyan)]">PASS</span>
+      </div>
+      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
+        <span class="text-[var(--text-muted)]">AIS_CORR</span><span class="text-white">PASS</span>
+      </div>
+      <div class="flex justify-between border-b pb-1" style="border-color: var(--border);">
+        <span class="text-[var(--text-muted)]">EV_RNK</span><span class="text-white">PASS</span>
+      </div>
+    </div>
+    
+    <div class="border p-3 bg-[var(--bg-dark)] mt-auto" style="border-color: var(--amber);">
+      <div class="text-[8px] text-[var(--text-muted)] uppercase mb-1 font-bold">TOP_CANDIDATE</div>
+      <div class="text-lg font-bold text-white uppercase mb-2" id="sum-name">...</div>
+      
+      <div class="flex justify-between items-end mb-2">
+        <div class="text-[8px] text-[var(--text-muted)] uppercase">EV_SCORE</div>
+        <div class="text-[14px] font-bold text-[var(--amber)]"><span id="sum-score">0</span><span class="text-[8px] text-[var(--text-muted)] ml-0.5">/100</span></div>
+      </div>
+      
+      <div class="border-t pt-2 mt-2 text-[8px] text-[var(--text-muted)] uppercase text-center" style="border-color: var(--border);">
+        POTENTIAL CANDIDATE. EVIDENCE CONSISTENCY DOES NOT ESTABLISH RESPONSIBILITY.
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+  // Payload injected from script
+  const PAYLOAD = {payload_data};
+  const $ = id => document.getElementById(id);
+
+  // --- Map Engine ---
+  let map;
+  const layers = {{ slick: null, origin: null, tracks: [] }};
+
+  function initMap() {{
+    map = L.map('map', {{ zoomControl: false }}).setView([13.0, 60.0], 4);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+      maxZoom: 17,
+      attribution: 'ESRI'
+    }}).addTo(map);
+    L.control.zoom({{ position: 'bottomright' }}).addTo(map);
+  }}
+
+  function renderGeoJSON(geojson, styleObj, focus = false) {{
+    const layer = L.geoJSON(geojson, {{
+      style: styleObj,
+      pointToLayer: (f, ll) => L.circleMarker(ll, styleObj)
+    }}).addTo(map);
+    if (focus) map.fitBounds(layer.getBounds(), {{ padding: [30, 30], animate: true }});
+    return layer;
+  }}
+
+  // --- Utils ---
+  const wait = ms => new Promise(res => setTimeout(res, ms));
+  function getTpl(id) {{ return $(id) ? $(id).innerHTML : ''; }}
+
+  // --- Trace Panel ---
+  function toggleTrace() {{
+     const b = $('trace-panel-body');
+     const i = $('trace-icon');
+     if(b.classList.contains('open')) {{
+        b.classList.remove('open');
+        i.innerText = '▲';
+     }} else {{
+        b.classList.add('open');
+        i.innerText = '▼';
+     }}
+  }}
+  
+  function addTrace(msg) {{
+     const now = new Date();
+     const timeStr = now.toISOString().substring(11, 19);
+     const html = `<div class="flex gap-2"><span class="text-[var(--text-muted)]">[${{timeStr}}]</span> <span class="text-[var(--text-main)]">${{msg}}</span></div>`;
+     if($('trace-log')) {{
+       $('trace-log').innerHTML += html;
+       $('trace-panel-body').scrollTop = $('trace-panel-body').scrollHeight;
+     }}
+  }}
+
+  function updatePipelineBar(step) {{
+     if(!$('global-pipeline')) return;
+     $('global-pipeline').classList.remove('hidden');
+     for(let i=1; i<=8; i++) {{
+       const el = $(`pipe-${{i}}`);
+       if(!el) continue;
+       if (i < step) {{
+          el.className = 'text-[var(--green)]';
+          el.innerText = '✓ ' + el.innerText.substring(2);
+       }} else if (i === step) {{
+          el.className = 'text-[var(--cyan)] font-bold';
+          el.innerText = '● ' + el.innerText.substring(2);
+       }} else {{
+          el.className = 'text-[var(--text-muted)]';
+          el.innerText = '○ ' + el.innerText.substring(2);
+       }}
+     }}
+  }}
+
+  // --- State Machine ---
+  async function setState(state) {{
+    const panel = $('panel-content');
+    if(!panel) return;
+    
+    if (state === 'EMPTY') {{
+      $('global-pipeline').classList.add('hidden');
+      $('trace-panel').classList.add('hidden');
+      panel.innerHTML = getTpl('tpl-empty');
+      $('header-status').innerText = 'SYS_IDLE';
+    }}
+    else if (state === 'NEW_INVESTIGATION') {{
+      $('global-pipeline').classList.add('hidden');
+      $('trace-panel').classList.remove('hidden');
+      panel.innerHTML = getTpl('tpl-new');
+      $('header-status').innerText = 'SYS_INPUT';
+      $('btn-reset').classList.remove('hidden');
+      $('trace-log').innerHTML = ''; // reset
+      addTrace('SYS_INIT. AWAITING PARAMS.');
+    }}
+    
+    else if (state === 'SEARCHING') {{
+      $('header-status').innerText = 'OP_SRCH';
+      updatePipelineBar(1);
+      panel.innerHTML = getTpl('tpl-searching');
+      const log = $('search-log');
+      
+      addTrace('VAL_PARAMS...');
+      log.innerHTML += `<div class="text-[var(--green)]">✓ COORD_OK</div>`; await wait(300);
+      log.innerHTML += `<div class="text-[var(--green)]">✓ WIN_GEN_OK</div>`; await wait(300);
+      
+      addTrace('Q_CATALOGUE [S1]...');
+      log.innerHTML += `<div class="text-[var(--cyan)] mt-2">● FIND_COV</div>`; await wait(400);
+      log.innerHTML += `<div class="text-[var(--text-muted)] pl-2">○ CHK_INT</div>`; await wait(400);
+      
+      addTrace('FOUND: 3_SCN');
+      setState('RESULTS');
+    }}
+
+    else if (state === 'RESULTS') {{
+      panel.innerHTML = getTpl('tpl-results');
+    }}
+
+    else if (state === 'SELECTED') {{
+      $('header-status').innerText = 'OP_SCN';
+      panel.innerHTML = getTpl('tpl-selected');
+      $('provenance-banner').classList.remove('hidden');
+      $('provenance-text').innerText = PAYLOAD.scenario;
+      addTrace('LOD_SCN: S1_GRD.');
+      
+      if(layers.slick) map.removeLayer(layers.slick);
+      layers.slick = renderGeoJSON(PAYLOAD.spill_mask, {{ color: '#ffffff', weight: 1, fillOpacity: 0.1, dashArray: '2,2' }}, true);
+    }}
+
+    else if (state === 'ANALYZING') {{
+      $('header-status').innerText = 'OP_DTC';
+      updatePipelineBar(2);
+      panel.innerHTML = getTpl('tpl-analyzing');
+      const log = $('analysis-log');
+      
+      addTrace('EXEC_MDL [U-NET]...');
+      log.innerHTML = `<div class="text-[var(--cyan)]">● SEG_CAND</div>
+                       <div class="text-[var(--text-muted)] pl-2">○ PROC_WGT</div>`; 
+      await wait(600);
+      
+      log.innerHTML = `<div class="text-[var(--green)]">✓ SEG_CAND</div>
+                       <div class="text-[var(--cyan)]">● EXT_GEOM</div>`; 
+      addTrace('EXT_GEOM_OK.');
+      await wait(500);
+
+      updatePipelineBar(3);
+      log.innerHTML = `<div class="text-[var(--green)]">✓ SEG_CAND</div>
+                       <div class="text-[var(--green)]">✓ EXT_GEOM</div>
+                       <div class="text-[var(--cyan)]">● HEU_SCR</div>`; 
+      addTrace('HEU_SCR: PASS.');
+      await wait(500);
+      
+      setState('DETECTED');
+    }}
+
+    else if (state === 'DETECTED') {{
+      panel.innerHTML = getTpl('tpl-detected');
+      $('evidence-chain').classList.remove('hidden');
+      updateChain(2);
+      
+      if(layers.slick) map.removeLayer(layers.slick);
+      layers.slick = renderGeoJSON(PAYLOAD.spill_mask, {{ color: 'var(--amber)', weight: 1, fillColor: 'var(--amber)', fillOpacity: 0.35 }}, true);
+      addTrace('REND_MASK: OK.');
+    }}
+
+    else if (state === 'DRIFT') {{
+      $('header-status').innerText = 'OP_BCK';
+      updatePipelineBar(4);
+      panel.innerHTML = getTpl('tpl-drift');
+      updateChain(3);
+      
+      const log = $('drift-progress-log');
+      log.innerHTML = `<div class="text-[var(--green)]">✓ INIT_200P</div>`; await wait(400);
+      addTrace('INIT_PTCL: OK.');
+      log.innerHTML += `<div class="text-[var(--green)]">✓ APP_FRC_CMEMS</div>`; await wait(400);
+      addTrace('APP_FRC: OK.');
+      log.innerHTML += `<div class="text-[var(--cyan)]">● RUN_SIM</div>`;
+      
+      const bounds = layers.slick.getBounds();
+      map.fitBounds(bounds.pad(1.5), {{animate: true, duration: 1}});
+      await wait(1000);
+      
+      addTrace('SIM_DONE.');
+      setState('ORIGIN');
+    }}
+
+    else if (state === 'ORIGIN') {{
+      updatePipelineBar(5);
+      panel.innerHTML = getTpl('tpl-origin');
+      
+      $('origin-window').innerText = PAYLOAD.origin_region.time_window.start.replace('2024-01-','24-01-').replace(' 0','T0').replace(' 1','T1') + 'Z' + '\\n' + PAYLOAD.origin_region.time_window.end.replace('2024-01-','24-01-').replace(' 0','T0').replace(' 1','T1') + 'Z';
+      
+      if(layers.origin) map.removeLayer(layers.origin);
+      layers.origin = renderGeoJSON(PAYLOAD.origin_region.polygon, {{ color: 'var(--cyan)', weight: 1, fillColor: 'var(--cyan)', fillOpacity: 0.15, dashArray: '4,4' }}, true);
+      addTrace('REND_ORG: OK.');
+    }}
+
+    else if (state === 'AIS') {{
+      $('header-status').innerText = 'OP_AIS';
+      updatePipelineBar(6);
+      panel.innerHTML = getTpl('tpl-ais');
+      updateChain(4);
+      $('timeline-overlay').classList.remove('hidden');
+      const f = $('ais-funnel');
+      
+      addTrace('Q_GFW...');
+      f.innerHTML = `<div class="text-center text-white mb-2 font-bold text-[10px]">27 VSL_RAW</div>`; await wait(500);
+      f.innerHTML += `<div class="text-center text-[var(--text-muted)] mb-2">↓</div>
+                      <div class="text-center text-[var(--text-muted)] mb-2 text-[9px]">-19 OUT_TMP</div>`; 
+      addTrace('FLT_TMP: -19.');
+      await wait(500);
+      
+      f.innerHTML += `<div class="text-center text-[var(--text-muted)] mb-2">↓</div>
+                      <div class="text-center text-[var(--text-muted)] mb-2 text-[9px]">-7 OUT_SPA</div>`; 
+      addTrace('FLT_SPA: -7.');
+      await wait(500);
+      
+      f.innerHTML += `<div class="text-center text-[var(--text-muted)] mb-2">↓</div>
+                      <div class="text-center text-[var(--cyan)] font-bold text-[12px]">1 CANDIDATE</div>`;
+      addTrace('CORR_DONE.');
+      await wait(800);
+      setState('CANDIDATES');
+    }}
+
+    else if (state === 'CANDIDATES') {{
+      $('header-status').innerText = 'OP_RNK';
+      updatePipelineBar(7);
+      panel.innerHTML = getTpl('tpl-candidates');
+      updateChain(5);
+      
+      const cands = PAYLOAD.candidate_ships;
+      $('cand-count').innerText = cands.length;
+      
+      const list = $('candidate-list');
+      list.innerHTML = '';
+      
+      cands.forEach((c, idx) => {{
+        const isTop = idx === 0;
+        
+        const t = renderGeoJSON(c.track, {{ color: '#475569', weight: 1, opacity: 0.6 }});
+        layers.tracks.push({{ layer: t, id: c.id }});
+        
+        const el = document.createElement('div');
+        el.className = `p-2 px-3 border cursor-pointer hover:bg-[var(--panel-2)] bg-[var(--panel-1)]`;
+        el.style.borderColor = isTop ? 'var(--amber)' : 'var(--border)';
+        el.innerHTML = `
+          <div class="flex justify-between items-end">
+            <div>
+              <div class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5">ID_0${{idx+1}}</div>
+              <div class="font-bold uppercase text-[11px] ${{isTop ? 'text-[var(--amber)]' : 'text-white'}}">${{c.name}}</div>
+            </div>
+            <div class="text-right">
+               <div class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5">SCORE</div>
+               <div class="font-bold text-[12px] ${{isTop ? 'text-[var(--amber)]' : 'text-white'}}">${{c.score}}</div>
+            </div>
+          </div>
+        `;
+        el.onclick = () => showDetail(c);
+        list.appendChild(el);
+      }});
+      
+      const group = new L.featureGroup([layers.slick, layers.origin, ...layers.tracks.map(t => t.layer)]);
+      map.fitBounds(group.getBounds(), {{ padding: [20, 20] }});
+      addTrace('RNK_DONE.');
+    }}
+
+    else if (state === 'SUMMARY') {{
+      $('header-status').innerText = 'OP_SUM';
+      updatePipelineBar(8);
+      panel.innerHTML = getTpl('tpl-summary');
+      if (PAYLOAD.candidate_ships.length > 0) {{
+        $('sum-name').innerText = PAYLOAD.candidate_ships[0].name;
+        $('sum-score').innerText = PAYLOAD.candidate_ships[0].score;
+      }}
+      $('btn-replay').classList.remove('hidden');
+      addTrace('SUM_GEN.');
+    }}
+  }}
+
+  function showDetail(c) {{
+    const panel = $('panel-content');
+    panel.innerHTML = getTpl('tpl-detail');
+    $('det-name').innerText = c.name;
+    $('det-score').innerText = c.score;
+    addTrace('VIEW_CAND: ' + c.name);
+    
+    const list = $('factor-list');
+    c.factors.forEach(f => {{
+      const max = f.max || (f.label.includes('Spati') || f.label.includes('Temp') ? 25 : (f.label.includes('Traj')||f.label.includes('Drift')?20:10));
+      const pct = (f.score / max) * 100;
+      
+      const el = document.createElement('div');
+      el.className = `p-2 px-3 border bg-[var(--panel-2)] cursor-pointer hover:border-[var(--amber)]`;
+      el.style.borderColor = 'var(--border)';
+      
+      let blocks = '';
+      const totalBlocks = 10;
+      const filledBlocks = Math.round((pct/100) * totalBlocks);
+      for(let i=0; i<totalBlocks; i++) {{
+         blocks += (i < filledBlocks) ? '█' : '▒';
+      }}
+
+      el.innerHTML = `
+        <div class="flex justify-between items-end mb-1">
+           <div class="text-[9px] uppercase font-bold text-white">${{f.label}}</div>
+           <div class="text-[10px] font-bold text-white">${{f.score}} <span class="text-[8px] text-[var(--text-muted)] font-normal">/${{max}}</span></div>
+        </div>
+        <div class="text-[9px] text-[var(--cyan)] mb-1">${{blocks}}</div>
+        <div class="text-[8px] text-[var(--text-muted)] uppercase">${{f.explanation}}</div>
+      `;
+      
+      el.onclick = () => {{
+         addTrace('INT_FAC: ' + f.label);
+         if(f.label.includes('Tim') || f.label.includes('Temp')) {{
+             $('tl-window').classList.remove('hidden');
+             $('tl-spill').classList.remove('hidden');
+             $('tl-ais').classList.remove('hidden');
+         }}
+      }};
+      list.appendChild(el);
+    }});
+    
+    layers.tracks.forEach(t => {{
+      if(t.id === c.id) {{
+        t.layer.setStyle({{ color: '#ffffff', weight: 2, opacity: 1 }});
+        t.layer.bringToFront();
+      }} else {{
+        t.layer.setStyle({{ color: '#475569', weight: 1, opacity: 0.3 }});
+      }}
+    }});
+  }}
+
+  function updateChain(step) {{
+    for(let i=1; i<=5; i++) {{
+      const el = $(`chain-${{i}}`);
+      if(!el) continue;
+      if (i < step) el.className = 'text-[var(--text-main)] uppercase';
+      else if (i === step) el.className = 'text-[var(--cyan)] uppercase font-bold';
+      else el.className = 'text-[var(--text-muted)] uppercase';
+    }}
+  }}
+
+  function focusStage(step) {{
+    if(step === 1 && layers.slick) map.fitBounds(layers.slick.getBounds());
+    if(step === 3 && layers.origin) map.fitBounds(layers.origin.getBounds());
+    if(step === 5) setState('CANDIDATES');
+  }}
+
+  if($('btn-reset')) $('btn-reset').onclick = () => {{ window.location.reload(); }};
+  if($('btn-replay')) $('btn-replay').onclick = () => {{
+    $('evidence-chain').classList.add('hidden');
+    $('provenance-banner').classList.add('hidden');
+    $('timeline-overlay').classList.add('hidden');
+    if(layers.slick) map.removeLayer(layers.slick);
+    if(layers.origin) map.removeLayer(layers.origin);
+    layers.tracks.forEach(t => map.removeLayer(t.layer));
+    layers.tracks = [];
+    $('btn-replay').classList.add('hidden');
+    setState('NEW_INVESTIGATION');
+  }};
+
+  window.onload = () => {{
+    initMap();
+    setState('EMPTY');
+  }};
+</script>
+</body>
+</html>
+"""
+    with open('index.html', 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    print("Built index.html with Rigid GIS Aesthetic")
+
+if __name__ == '__main__':
+    build()

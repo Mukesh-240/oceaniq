@@ -63,3 +63,9 @@ pitchtmp/
 zen.json
 s2.json
 proof_*.npy
+
+# node backend
+node_modules/
+**/node_modules/
+server/node_modules/
+npm-debug.log*
